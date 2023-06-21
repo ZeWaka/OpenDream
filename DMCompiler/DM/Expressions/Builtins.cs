@@ -1,3 +1,4 @@
+using System;
 using OpenDreamShared.Compiler;
 using DMCompiler.Compiler.DM;
 using OpenDreamShared.Dream;
@@ -513,17 +514,6 @@ namespace DMCompiler.DM.Expressions {
                         if (field.Variable.SafeToTakeAsConstant()) {
                             return field.Variable.Value.TryAsConstantWithLocation(out constant, Location);
                         }
-                    }
-                    break;
-                }
-                case Dereference memberAccess: {
-                    var obj = DMObjectTree.GetDMObject(memberAccess._expr.Path.GetValueOrDefault());
-                    var variable = obj.GetVariable(memberAccess.PropertyName);
-                    if(variable == null) {
-                        variable = obj.GetGlobalVariable(memberAccess.PropertyName);
-                    }
-                    if (variable != null && variable.SafeToTakeAsConstant()) {
-                        return variable.Value.TryAsConstantWithLocation(out constant, Location);
                     }
                     break;
                 }

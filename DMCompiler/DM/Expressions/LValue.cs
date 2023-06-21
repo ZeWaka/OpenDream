@@ -111,13 +111,8 @@ namespace DMCompiler.DM.Expressions {
     }
 
     // Identifier of field
-<<<<<<< HEAD
     sealed class Field : LValue {
-        public readonly DMVariable Variable;
-=======
-    class Field : LValue {
         public DMVariable Variable { get; private set; }
->>>>>>> altoids/simplifier-slaughter
 
         public Field(Location location, DMVariable variable)
             : base(location, variable.Type) {
@@ -151,13 +146,8 @@ namespace DMCompiler.DM.Expressions {
     }
 
     // Id of global field
-<<<<<<< HEAD
     sealed class GlobalField : LValue {
-        int Id { get; }
-=======
-    class GlobalField : LValue {
-        public int Id { get; private set; }
->>>>>>> altoids/simplifier-slaughter
+        public int Id { get; }
 
         public GlobalField(Location location, DreamPath? path, int id)
             : base(location, path) {

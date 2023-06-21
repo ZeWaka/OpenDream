@@ -118,7 +118,7 @@ namespace DMCompiler.DM.Expressions {
                     break;
                 case Expressions.Resource lhsResource:
                     if (rhs is Expressions.Resource rhsResource) {
-                        return Number.BoolToNumber(Location, lhsResource.Value == rhsResource.Value);
+                        return Number.BoolToNumber(Location, lhsResource.FilePath == rhsResource.FilePath);
                     }
                     break;
                 case Expressions.Path lhsPath:
@@ -138,11 +138,6 @@ namespace DMCompiler.DM.Expressions {
         #endregion
     }
 
-<<<<<<< HEAD
-    // null
-    sealed class Null : Constant {
-        public Null(Location location) : base(location) { }
-=======
     /// <summary>
     /// Stores a literal null.
     /// </summary>
@@ -157,7 +152,6 @@ namespace DMCompiler.DM.Expressions {
             }
         }
         public Null(Location location) : base(location, 0f) { }
->>>>>>> altoids/simplifier-slaughter
 
         public override void EmitPushValue(DMObject dmObject, DMProc proc) {
             proc.PushNull();
@@ -256,13 +250,8 @@ namespace DMCompiler.DM.Expressions {
     }
 
     // 4.0, -4.0
-<<<<<<< HEAD
-    sealed class Number : Constant {
-        public float Value { get; }
-=======
     class Number : Constant {
         public virtual float Value { get; }
->>>>>>> altoids/simplifier-slaughter
 
         public Number(Location location, int value) : base(location) {
             Value = value;
@@ -495,7 +484,6 @@ namespace DMCompiler.DM.Expressions {
         }
     }
 
-<<<<<<< HEAD
     // '[resource_path]'
     // Where resource_path is one of:
     //   - path relative to project root (.dme file location)
@@ -507,13 +495,8 @@ namespace DMCompiler.DM.Expressions {
         private static readonly EnumerationOptions SearchOptions = new() {
             MatchCasing = MatchCasing.CaseInsensitive
         };
-=======
-    // 'abc'
-    class Resource : Constant {
-        public string Value { get; }
->>>>>>> altoids/simplifier-slaughter
 
-        private readonly string _filePath;
+        public readonly string FilePath;
         private bool _isAmbiguous;
 
         public Resource(Location location, string filePath) : base(location) {
@@ -541,24 +524,24 @@ namespace DMCompiler.DM.Expressions {
             }
 
             if (finalFilePath != null) {
-                _filePath = System.IO.Path.GetRelativePath(outputDir, finalFilePath);
+                FilePath = System.IO.Path.GetRelativePath(outputDir, finalFilePath);
 
                 if (_isAmbiguous) {
                     DMCompiler.Emit(WarningCode.AmbiguousResourcePath, Location,
-                        $"Resource {filePath} has multiple case-insensitive matches, using {_filePath}");
+                        $"Resource {filePath} has multiple case-insensitive matches, using {FilePath}");
                 }
             } else {
                 DMCompiler.Emit(WarningCode.ItemDoesntExist, Location, $"Cannot find file '{filePath}'");
-                _filePath = filePath;
+                FilePath = filePath;
             }
         }
 
         public override void EmitPushValue(DMObject dmObject, DMProc proc) {
-            proc.PushResource(_filePath);
+            proc.PushResource(FilePath);
         }
 
         public override Constant CopyWithNewLocation(Location loc) {
-            return new Resource(loc, Value);
+            return new Resource(loc, FilePath);
         }
 
         public override bool IsTruthy() => true;
@@ -566,7 +549,7 @@ namespace DMCompiler.DM.Expressions {
         public override bool TryAsJsonRepresentation(out object? json) {
             json = new Dictionary<string, object>() {
                 { "type", JsonVariableType.Resource },
-                { "resourcePath", _filePath }
+                { "resourcePath", FilePath }
             };
 
             return true;
@@ -665,17 +648,16 @@ namespace DMCompiler.DM.Expressions {
             }
         }
 
-<<<<<<< HEAD
         public override string GetNameof(DMObject dmObject, DMProc proc) {
             return Value.LastElement;
-=======
+        }
+
         /// <summary>
         /// This is used to make sure that Constants properly remember their context, <br/>
         /// even as they get folded about the place, into various locations in the source code.
         /// </summary>
         public override Constant CopyWithNewLocation(Location loc) {
             return new Path(loc, _dmObject, Value);
->>>>>>> altoids/simplifier-slaughter
         }
 
         public override bool IsTruthy() => true;

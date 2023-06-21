@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using JetBrains.Annotations;
 using OpenDreamShared.Compiler;
 using OpenDreamShared.Dream;
 using OpenDreamShared.Dream.Procs;
@@ -442,14 +443,8 @@ namespace DMCompiler.DM.Expressions {
         public Or(Location location, DMExpression lhs, DMExpression rhs)
             : base(location, lhs, rhs) { }
 
-<<<<<<< HEAD
         public override bool TryAsConstant([NotNullWhen(true)] out Constant? constant) {
-            if (LHS.TryAsConstant(out var lhs) && lhs.IsTruthy()) {
-                constant = lhs;
-                return true;
-=======
-        public override bool TryAsConstant(out Constant constant) {
-            if (LHS.TryAsConstant(out var lhs)) { // Short-circuiting!!
+            if (LHS.TryAsConstant(out var lhs) && lhs.IsTruthy()) { // Short-circuiting!!
                 if(lhs.IsTruthy()) {
                     constant = lhs;
                     return true;
@@ -458,7 +453,6 @@ namespace DMCompiler.DM.Expressions {
                     constant = rhs;
                     return true;
                 }
->>>>>>> altoids/simplifier-slaughter
             }
 
             return base.TryAsConstant(out constant);
@@ -479,14 +473,8 @@ namespace DMCompiler.DM.Expressions {
         public And(Location location, DMExpression lhs, DMExpression rhs)
             : base(location, lhs, rhs) { }
 
-<<<<<<< HEAD
         public override bool TryAsConstant([NotNullWhen(true)] out Constant? constant) {
-            if (LHS.TryAsConstant(out var lhs) && !lhs.IsTruthy()) {
-                constant = lhs;
-                return true;
-=======
-        public override bool TryAsConstant(out Constant constant) {
-            if (LHS.TryAsConstant(out var lhs)) { // Short-circuiting!!
+            if (LHS.TryAsConstant(out var lhs) && !lhs.IsTruthy()) { // Short-circuiting!!
                 if (!lhs.IsTruthy()) {
                     constant = lhs;
                     return true;
@@ -495,7 +483,6 @@ namespace DMCompiler.DM.Expressions {
                     constant = rhs;
                     return true;
                 }
->>>>>>> altoids/simplifier-slaughter
             }
 
             return base.TryAsConstant(out constant);

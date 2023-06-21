@@ -11,14 +11,8 @@ namespace DMCompiler.DM.Expressions {
     // x.f().y.g()[2]
     // etc.
     class Dereference : LValue {
-<<<<<<< HEAD
         public struct Operation {
             public DMASTDereference.OperationKind Kind;
-=======
-        public DMExpression _expr { get; private set; }
-        public readonly string PropertyName;
-        bool _conditional;
->>>>>>> altoids/simplifier-slaughter
 
             // Field*, Call*
             public string Identifier;
@@ -36,7 +30,7 @@ namespace DMCompiler.DM.Expressions {
         }
 
         private readonly DMExpression _expression;
-        private readonly Operation[] _operations;
+        public readonly Operation[] _operations;
 
         public override DreamPath? Path { get; }
         public override DreamPath? NestedPath { get; }
@@ -296,7 +290,6 @@ namespace DMCompiler.DM.Expressions {
         public override bool TryAsConstant(out Constant constant) {
             DreamPath? prevPath = null;
 
-<<<<<<< HEAD
             if (_operations.Length == 1) {
                 prevPath = _expression.Path;
             } else {
@@ -321,20 +314,6 @@ namespace DMCompiler.DM.Expressions {
                                 return true; // MUST be true.
                             }
                         }
-=======
-        public override bool TryAsConstant(out Constant constant)
-        {
-            if(_expr.Path is not null)
-            {
-                var obj = DMObjectTree.GetDMObject(_expr.Path.GetValueOrDefault());
-                var variable = obj.GetVariable(PropertyName);
-                if (variable != null) {
-                    if (variable.IsConst)
-                        return variable.Value.TryAsConstant(out constant);
-                    if ((variable.ValType & DMValueType.CompiletimeReadonly) == DMValueType.CompiletimeReadonly) {
-                        variable.Value.TryAsConstant(out constant);
-                        return true; // MUST be true.
->>>>>>> altoids/simplifier-slaughter
                     }
                     break;
             }
