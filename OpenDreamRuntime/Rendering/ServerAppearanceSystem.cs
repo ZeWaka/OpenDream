@@ -1,14 +1,14 @@
-﻿using OpenDreamShared.Rendering;
-using OpenDreamShared.Dream;
+﻿using OpenDreamShared.Dream;
 using Robust.Server.Player;
 using Robust.Shared.Enums;
 using SharedAppearanceSystem = OpenDreamShared.Rendering.SharedAppearanceSystem;
+using System.Diagnostics.CodeAnalysis;
 
 namespace OpenDreamRuntime.Rendering {
-    sealed class ServerAppearanceSystem : SharedAppearanceSystem {
-        private Dictionary<IconAppearance, uint> _appearanceToId = new();
-        private Dictionary<uint, IconAppearance> _idToAppearance = new();
-        private uint _appearanceIdCounter = 0;
+    public sealed class ServerAppearanceSystem : SharedAppearanceSystem {
+        private readonly Dictionary<IconAppearance, uint> _appearanceToId = new();
+        private readonly Dictionary<uint, IconAppearance> _idToAppearance = new();
+        private uint _appearanceIdCounter;
 
         [Dependency] private readonly IPlayerManager _playerManager = default!;
 
@@ -39,14 +39,12 @@ namespace OpenDreamRuntime.Rendering {
             return appearanceId;
         }
 
-        public uint? GetAppearanceId(IconAppearance appearance) {
-            if (_appearanceToId.TryGetValue(appearance, out uint id)) return id;
-
-            return null;
+        public IconAppearance MustGetAppearance(uint appearanceId) {
+            return _idToAppearance[appearanceId];
         }
 
-        public IconAppearance GetAppearance(uint appearanceId) {
-            return _idToAppearance[appearanceId];
+        public bool TryGetAppearance(uint appearanceId, [NotNullWhen(true)] out IconAppearance? appearance) {
+            return _idToAppearance.TryGetValue(appearanceId, out appearance);
         }
 
         public void Animate(EntityUid entity, IconAppearance targetAppearance, TimeSpan duration) {

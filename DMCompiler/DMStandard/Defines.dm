@@ -20,7 +20,7 @@
 #define OBJ_LAYER 3
 #define MOB_LAYER 4
 #define FLY_LAYER 5
-#define EFFECTS_LAYER 19999
+#define EFFECTS_LAYER 5000
 #define BACKGROUND_LAYER 20000
 
 #define FLOAT_PLANE -32767
@@ -73,10 +73,6 @@
 #define MOB_PERSPECTIVE 0
 #define EYE_PERSPECTIVE 1
 #define EDGE_PERSPECTIVE 2
-
-//These are used for the world.byond_version, client.byond_version, etc. vars too
-#define DM_VERSION 514
-#define DM_BUILD 1584
 
 //regex
 #define REGEX_QUOTE(a) regex((a), 1)
@@ -137,19 +133,26 @@
 #define BACK_EASING		8
 #define JUMP_EASING		9
 
-//undocumented matrix defines?
-#define MATRIX_TRANSLATE	(1<<0)
-#define MATRIX_ROTATE		(1<<1)
-#define MATRIX_SCALE		(1<<2)
-#define MATRIX_MODIFY		(1<<3)
+//Undocumented matrix defines (see https://www.byond.com/forum/post/1881375)
+#define MATRIX_COPY 0
+#define MATRIX_MULTIPLY 1 // idk why this is first, either
+#define MATRIX_ADD 2
+#define MATRIX_SUBTRACT 3
+#define MATRIX_INVERT 4
+#define MATRIX_INTERPOLATE 8
+//NOTE: Targets (specifically Para, afaik) only use these ones.
+#define MATRIX_ROTATE		5
+#define MATRIX_SCALE		6
+#define MATRIX_TRANSLATE	7
+#define MATRIX_MODIFY		128
 
 //world/Profile() arg
 #define PROFILE_STOP	1
 #define PROFILE_CLEAR	2
-#define PROFILE_AVERAGE 3
-#define PROFILE_START	4
-#define PROFILE_REFRESH	5
-#define PROFILE_RESTART	6
+#define PROFILE_AVERAGE 4
+#define PROFILE_START	0
+#define PROFILE_REFRESH	0
+#define PROFILE_RESTART	PROFILE_CLEAR
 
 //filter(type="alpha", ...) flags arg
 #define MASK_INVERSE	(1<<0)

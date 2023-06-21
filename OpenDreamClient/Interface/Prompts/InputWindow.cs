@@ -1,13 +1,13 @@
 ﻿using OpenDreamShared.Dream.Procs;
 using Robust.Client.UserInterface;
 
-namespace OpenDreamClient.Interface.Prompts
-{
+namespace OpenDreamClient.Interface.Prompts {
     [Virtual]
-    class InputWindow : PromptWindow {
-        public InputWindow(int promptId, String title, String message, String defaultValue, bool canCancel) : base(promptId, title, message) {
+    internal class InputWindow : PromptWindow {
+        protected InputWindow(string title, string message, bool canCancel,
+            Action<DMValueType, object?>? onClose) : base(title, message, onClose) {
             CreateButton("Ok", true);
-            if (canCancel) CreateButton("Cancel", false);;
+            if (canCancel) CreateButton("Cancel", false);
         }
 
         protected void SetPromptControl(Control promptControl, bool grabKeyboard = true) {
@@ -26,4 +26,5 @@ namespace OpenDreamClient.Interface.Prompts
         protected virtual void OkButtonClicked() {
             throw new NotImplementedException();
         }
-    }}
+    }
+}

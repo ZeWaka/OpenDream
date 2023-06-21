@@ -1,5 +1,5 @@
 ﻿/world
-	var/list/contents = list()
+	var/list/contents = null
 	var/list/vars
 
 	var/log = null
@@ -22,7 +22,7 @@
 	var/maxy = 0
 	var/maxz = 0
 	var/icon_size = 32
-	var/view = 7 // The default is actually 5, but we hardcode a 15x15 view for now
+	var/view = 5
 	var/movement_mode = LEGACY_MOVEMENT_MODE as opendream_unimplemented
 
 	var/byond_version = DM_VERSION
@@ -37,7 +37,7 @@
 	var/visibility = 0 as opendream_unimplemented
 	var/status as opendream_unimplemented
 	var/process
-	var/list/params = list() as opendream_unimplemented
+	var/list/params = null as opendream_unimplemented
 
 	var/sleep_offline = 0 as opendream_unimplemented
 

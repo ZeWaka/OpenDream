@@ -6,8 +6,7 @@ namespace OpenDreamShared.Compiler {
     /// <remarks>
     /// All values should be unique.
     /// </remarks>
-    public enum WarningCode
-    {
+    public enum WarningCode {
         // 0 - 999 are reserved for giving codes to fatal errors which cannot reasonably be demoted to a warning/notice/disable.
         Unknown = 0,
         BadToken = 1,
@@ -26,6 +25,7 @@ namespace OpenDreamShared.Compiler {
         HardConstContext = 500,
         WriteToConstant = 501,
         InvalidInclusion = 900,
+
         // 1000 - 1999 are reserved for preprocessor configuration.
         FileAlreadyIncluded = 1000,
         MissingIncludedFile = 1001,
@@ -39,13 +39,23 @@ namespace OpenDreamShared.Compiler {
         // 2000 - 2999 are reserved for compiler configuration of actual behaviour.
         SoftReservedKeyword = 2000, // For keywords that SHOULD be reserved, but don't have to be. 'null' and 'defined', for instance
         DuplicateVariable = 2100,
+        DuplicateProcDefinition = 2101,
         TooManyArguments = 2200,
         PointlessParentCall = 2205,
         PointlessBuiltinCall = 2206, // For pointless calls to issaved() or initial()
+<<<<<<< HEAD
         StupidNullOperation = 2207, // Did you know that null <= "" is equal to TRUE? I bet the user doesn't until they end up with this warning!
+=======
+        SuspiciousMatrixCall = 2207, // Calling matrix() with seemingly the wrong arguments
+>>>>>>> master
         MalformedRange = 2300,
         InvalidRange = 2301,
         InvalidSetStatement = 2302,
+        InvalidOverride = 2303,
+        DanglingVarType = 2401, // For types inferred by a particular var definition and nowhere else, that ends up not existing (not forced-fatal because BYOND doesn't always error)
+        MissingInterpolatedExpression = 2500, // A text macro is missing a required interpolated expression
+        AmbiguousResourcePath = 2600,
+
         // 3000 - 3999 are reserved for stylistic configuration.
         EmptyBlock = 3100,
 
@@ -122,5 +132,13 @@ namespace OpenDreamShared.Compiler {
         public CompileAbortException(Location location, string message) : base(location, message) {}
 
         public CompileAbortException(string message) : base(message) {}
+    }
+
+    public sealed class UnknownIdentifierException : CompileErrorException {
+        public string IdentifierName;
+
+        public UnknownIdentifierException(Location location, string identifierName) : base(location, $"Unknown identifier \"{identifierName}\"") {
+            IdentifierName = identifierName;
+        }
     }
 }

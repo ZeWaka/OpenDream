@@ -2,7 +2,7 @@
 
 **OpenDream** is a C# project that aims to compile games made in the [DM language], and run them.
 
-This project is currently in early stages, and is not feature-complete.
+**This project is currently in early stages.** Expect bugs, missing features, and a lack of quality-of-life enhancements. Set your expectations accordingly.
 
 All parts of OpenDream should work fine on Windows and Linux, though the latter is not used as much and therefore isn't as thoroughly tested.
 
@@ -31,9 +31,9 @@ There's 3 main parts: Compiler, Server, and Client
 **Client:** Run `OpenDreamClient.exe`. You will be prompted to choose a server address, port, and username. The defaults should work for a locally hosted server.
 
 ## Screenshots
-The following screenshots are taken from a stripped-down version of /tg/station available [here](https://github.com/wixoaGit/tgstation).
+The following screenshots are taken from a version of Paradise Station with a recompiled 64-bit rustg DLL. This branch of Paradise is available [here](https://github.com/ike709/Paradise/tree/rustg_64).
 
-![](https://github.com/wixoaGit/OpenDream/blob/master/.github/assets/screenshot.png?raw=true)
-![](https://github.com/wixoaGit/OpenDream/blob/master/.github/assets/screenshot2.png?raw=true)
+![](./.github/assets/screenshot.png?raw=true)
+![](./.github/assets/screenshot2.png?raw=true)
 
 [DM Language]: http://secure.byond.com/

@@ -7,7 +7,7 @@ using OpenDreamShared.Compiler;
 namespace DMCompiler.Compiler.DM {
     public sealed class DMLexer : TokenLexer {
         // NOTE: .NET still needs you to pass the capacity size to generate the most optimal code, so update it when you change these values
-        public static readonly List<string> ValidEscapeSequences = new(41) {
+        public static readonly List<string> ValidEscapeSequences = new(38) {
             "icon",
             "Roman", "roman",
             "The", "the",
@@ -26,8 +26,12 @@ namespace DMCompiler.Compiler.DM {
             "red", "blue", "green", "black", "yellow", "navy", "teal", "cyan",
             "bold", "b",
             "italic",
-            "u", "U", "x",  //TODO: ASCII/Unicode values *properly*
             "..."
+        };
+
+        private static readonly List<TokenType> ValidIdentifierComponents = new(2) {
+            TokenType.DM_Preproc_Identifier,
+            TokenType.DM_Preproc_Number
         };
 
         // NOTE: .NET still needs you to pass the capacity size to generate the most optimal code, so update it when you change these values
@@ -51,6 +55,7 @@ namespace DMCompiler.Compiler.DM {
             { "as", TokenType.DM_As },
             { "set", TokenType.DM_Set },
             { "call", TokenType.DM_Call },
+            { "call_ext", TokenType.DM_Call},
             { "spawn", TokenType.DM_Spawn },
             { "goto", TokenType.DM_Goto },
             { "step", TokenType.DM_Step },
@@ -59,9 +64,9 @@ namespace DMCompiler.Compiler.DM {
             { "throw", TokenType.DM_Throw }
         };
 
-        public int BracketNesting = 0;
+        public int BracketNesting;
 
-        private readonly Stack<int> _indentationStack = new(new int[] { 0 });
+        private readonly Stack<int> _indentationStack = new(new[] { 0 });
 
         /// <param name="source">The enumerable list of tokens output by <see cref="DMPreprocessor.DMPreprocessorLexer"/>.</param>
         public DMLexer(string sourceName, IEnumerable<Token> source) : base(sourceName, source) { }
@@ -96,7 +101,7 @@ namespace DMCompiler.Compiler.DM {
                                 token = preprocToken;
                             } else {
                                 _pendingTokenQueue.Enqueue(preprocToken);
-                                token = CreateToken(TokenType.Error, null, "Invalid indentation");
+                                token = CreateToken(TokenType.Error, String.Empty, "Invalid indentation");
                             }
 
                             do {
@@ -217,6 +222,9 @@ namespace DMCompiler.Compiler.DM {
                                 case ">>": token = CreateToken(TokenType.DM_RightShift, c); break;
                                 case ">=": token = CreateToken(TokenType.DM_GreaterThanEquals, c); break;
                                 case ">>=": token = CreateToken(TokenType.DM_RightShiftEquals, c); break;
+                                case ":=": token = CreateToken(TokenType.DM_AssignInto, c); break;
+                                case "[]": token = CreateToken(TokenType.DM_DoubleSquareBracket, c); break;
+                                case "[]=": token = CreateToken(TokenType.DM_DoubleSquareBracketEquals, c); break;
                                 default: token = CreateToken(TokenType.Error, c, $"Invalid punctuator token '{c}'"); break;
                             }
 
@@ -238,13 +246,13 @@ namespace DMCompiler.Compiler.DM {
                         case TokenType.DM_Preproc_String: {
                             string tokenText = preprocToken.Text;
 
-                            string stringStart = null, stringEnd = null;
+                            string? stringStart = null, stringEnd = null;
                             switch (preprocToken.Text[0]) {
                                 case '"': stringStart = "\""; stringEnd = "\""; break;
                                 case '{': stringStart = "{\""; stringEnd = "\"}"; break;
                             }
 
-                            if (stringEnd != null) {
+                            if (stringStart != null && stringEnd != null) {
                                 StringBuilder stringTextBuilder = new StringBuilder(tokenText);
 
                                 int stringNesting = 1;
@@ -280,15 +288,14 @@ namespace DMCompiler.Compiler.DM {
                             //This is caused by preprocessor macros and escaped identifiers
                             do {
                                 identifierTextBuilder.Append(GetCurrent().Text);
-                            } while (Advance().Type == TokenType.DM_Preproc_Identifier && !AtEndOfSource);
+                            } while (ValidIdentifierComponents.Contains(Advance().Type) && !AtEndOfSource);
 
                             string identifierText = identifierTextBuilder.ToString();
-                            if (Keywords.TryGetValue(identifierText, out TokenType keywordType)) {
-                                token = CreateToken(keywordType, identifierText);
-                            } else {
-                                token = CreateToken(TokenType.DM_Identifier, identifierText);
-                            }
+                            var tokenType = Keywords.TryGetValue(identifierText, out TokenType keywordType)
+                                ? keywordType
+                                : TokenType.DM_Identifier;
 
+                            token = CreateToken(tokenType, identifierText);
                             break;
                         }
                         case TokenType.DM_Preproc_Number: {

@@ -2,10 +2,10 @@
 using System.Linq;
 using System.Text.Json;
 using OpenDreamRuntime.Objects;
-using OpenDreamRuntime.Objects.MetaObjects;
+using OpenDreamRuntime.Objects.Types;
 using OpenDreamRuntime.Procs;
-using OpenDreamRuntime.Procs.DebugAdapter;
 using OpenDreamRuntime.Procs.Native;
+using OpenDreamRuntime.Rendering;
 using OpenDreamRuntime.Resources;
 using OpenDreamShared;
 using OpenDreamShared.Dream;
@@ -17,7 +17,7 @@ using Robust.Shared.Configuration;
 using Robust.Shared.Timing;
 
 namespace OpenDreamRuntime {
-    partial class DreamManager : IDreamManager {
+    internal partial class DreamManager : IDreamManager {
         [Dependency] private readonly IConfigurationManager _configManager = default!;
         [Dependency] private readonly IPlayerManager _playerManager = default!;
         [Dependency] private readonly IDreamMapManager _dreamMapManager = default!;
@@ -26,8 +26,11 @@ namespace OpenDreamRuntime {
         [Dependency] private readonly ITaskManager _taskManager = default!;
         [Dependency] private readonly IGameTiming _gameTiming = default!;
         [Dependency] private readonly IDreamObjectTree _objectTree = default!;
+        [Dependency] private readonly IEntitySystemManager _entitySystemManager = default!;
 
-        public DreamObject WorldInstance { get; private set; }
+        private ServerAppearanceSystem? _appearanceSystem;
+
+        public DreamObjectWorld WorldInstance { get; private set; }
         public Exception? LastDMException { get; set; }
 
         public event EventHandler<Exception>? OnException;
@@ -35,14 +38,13 @@ namespace OpenDreamRuntime {
         // Global state that may not really (really really) belong here
         public List<DreamValue> Globals { get; set; } = new();
         public IReadOnlyList<string> GlobalNames { get; private set; } = new List<string>();
-        public DreamList WorldContentsList { get; private set; }
-        public Dictionary<DreamObject, DreamList> AreaContents { get; set; } = new();
-        public Dictionary<DreamObject, int> ReferenceIDs { get; set; } = new();
-        public List<DreamObject> Mobs { get; set; } = new();
-        public List<DreamObject> Clients { get; set; } = new();
-        public List<DreamObject> Datums { get; set; } = new();
+        public Dictionary<DreamObject, int> ReferenceIDs { get; } = new();
+        public Dictionary<int, DreamObject> ReferenceIDsToDreamObject { get; } = new();
+        public HashSet<DreamObject> Clients { get; set; } = new();
+        public HashSet<DreamObject> Datums { get; set; } = new();
         public Random Random { get; set; } = new();
         public Dictionary<string, List<DreamObject>> Tags { get; set; } = new();
+        private int _dreamObjectRefIdCounter;
 
         private DreamCompiledJson _compiledJson;
         public bool Initialized { get; private set; }
@@ -68,7 +70,7 @@ namespace OpenDreamRuntime {
 
             // Call New() on all /area and /turf that exist, each with waitfor=FALSE separately. If <global init> created any /area, call New a SECOND TIME
             // new() up /objs and /mobs from compiled-in maps [order: (1,1) then (2,1) then (1,2) then (2,2)]
-            _dreamMapManager.InitializeAtoms(_compiledJson.Maps);
+            _dreamMapManager.InitializeAtoms(_compiledJson.Maps![0]);
 
             // Call world.New()
             WorldInstance.SpawnProc("New");
@@ -98,23 +100,25 @@ namespace OpenDreamRuntime {
             if (json == null)
                 return false;
 
+            if (json.Maps == null || json.Maps.Count == 0) throw new ArgumentException("No maps were given");
+            if (json.Maps.Count > 1) {
+                Logger.Warning("Loading more than one map is not implemented, skipping additional maps");
+            }
+
             _compiledJson = json;
             _dreamResourceManager.SetDirectory(Path.GetDirectoryName(jsonPath));
             if(!string.IsNullOrEmpty(_compiledJson.Interface) && !_dreamResourceManager.DoesFileExist(_compiledJson.Interface))
                 throw new FileNotFoundException("Interface DMF not found at "+Path.Join(Path.GetDirectoryName(jsonPath),_compiledJson.Interface));
-            //TODO: Empty or invalid _compiledJson.Interface should return default interface - see issue #851
-            _objectTree.LoadJson(json);
 
-            SetMetaObjects();
+            _objectTree.LoadJson(json);
 
             DreamProcNative.SetupNativeProcs(_objectTree);
 
             _dreamMapManager.Initialize();
-            WorldContentsList = DreamList.Create();
-            WorldInstance = _objectTree.CreateObject(_objectTree.World);
+            WorldInstance = new DreamObjectWorld(_objectTree.World.ObjectDefinition);
 
             // Call /world/<init>. This is an IMPLEMENTATION DETAIL and non-DMStandard should NOT be run here.
-            WorldInstance.InitSpawn(new DreamProcArguments());
+            WorldInstance.InitSpawn(new());
 
             if (_compiledJson.Globals is GlobalListJson jsonGlobals) {
                 Globals.Clear();
@@ -131,29 +135,9 @@ namespace OpenDreamRuntime {
             Globals[0] = new DreamValue(WorldInstance);
 
             // Load turfs and areas of compiled-in maps, recursively calling <init>, but suppressing all New
-            _dreamMapManager.LoadAreasAndTurfs(_compiledJson.Maps);
+            _dreamMapManager.LoadAreasAndTurfs(_compiledJson.Maps[0]);
 
             return true;
-        }
-
-        private void SetMetaObjects() {
-            // Datum needs to be set first
-            _objectTree.SetMetaObject(_objectTree.Datum, new DreamMetaObjectDatum());
-
-            //TODO Investigate what types BYOND can reparent without exploding and only allow reparenting those
-            _objectTree.SetMetaObject(_objectTree.List, new DreamMetaObjectList());
-            _objectTree.SetMetaObject(_objectTree.Client, new DreamMetaObjectClient());
-            _objectTree.SetMetaObject(_objectTree.World, new DreamMetaObjectWorld());
-            _objectTree.SetMetaObject(_objectTree.Matrix, new DreamMetaObjectMatrix());
-            _objectTree.SetMetaObject(_objectTree.Regex, new DreamMetaObjectRegex());
-            _objectTree.SetMetaObject(_objectTree.Atom, new DreamMetaObjectAtom());
-            _objectTree.SetMetaObject(_objectTree.Area, new DreamMetaObjectArea());
-            _objectTree.SetMetaObject(_objectTree.Turf, new DreamMetaObjectTurf());
-            _objectTree.SetMetaObject(_objectTree.Movable, new DreamMetaObjectMovable());
-            _objectTree.SetMetaObject(_objectTree.Mob, new DreamMetaObjectMob());
-            _objectTree.SetMetaObject(_objectTree.Icon, new DreamMetaObjectIcon());
-            _objectTree.SetMetaObject(_objectTree.Filter, new DreamMetaObjectFilter());
-            _objectTree.SetMetaObject(_objectTree.Savefile, new DreamMetaObjectSavefile());
         }
 
         public void WriteWorldLog(string message, LogLevel level = LogLevel.Info, string sawmill = "world.log") {
@@ -163,15 +147,12 @@ namespace OpenDreamRuntime {
                 Logger.Log(LogLevel.Error, $"Failed to write to the world log, falling back to console output. Original log message follows: [{LogMessage.LogLevelToName(level)}] world.log: {message}");
             }
 
-            if (logRsc is ConsoleOutputResource consoleOut) // Output() on ConsoleOutputResource uses LogLevel.Info
-            {
+            if (logRsc is ConsoleOutputResource consoleOut) { // Output() on ConsoleOutputResource uses LogLevel.Info
                 consoleOut.WriteConsole(level, sawmill, message);
-            }
-            else
-            {
+            } else {
                 logRsc.Output(new DreamValue($"[{LogMessage.LogLevelToName(level)}] {sawmill}: {message}"));
-                if (_configManager.GetCVar(OpenDreamCVars.AlwaysShowExceptions))
-                {
+
+                if (_configManager.GetCVar(OpenDreamCVars.AlwaysShowExceptions)) {
                     Logger.LogS(level, sawmill, message);
                 }
             }
@@ -193,8 +174,9 @@ namespace OpenDreamRuntime {
 
                     refType = RefType.DreamObject;
                     if (!ReferenceIDs.TryGetValue(refObject, out idx)) {
-                        idx = ReferenceIDs.Count;
+                        idx = _dreamObjectRefIdCounter++;
                         ReferenceIDs.Add(refObject, idx);
+                        ReferenceIDsToDreamObject.Add(idx, refObject);
                     }
                 }
             } else if (value.TryGetValueAsString(out var refStr)) {
@@ -208,9 +190,16 @@ namespace OpenDreamRuntime {
             } else if (value.TryGetValueAsType(out var type)) {
                 refType = RefType.DreamType;
                 idx = type.Id;
+            } else if (value.TryGetValueAsAppearance(out var appearance)) {
+                refType = RefType.DreamAppearance;
+                _appearanceSystem ??= _entitySystemManager.GetEntitySystem<ServerAppearanceSystem>();
+                idx = (int)_appearanceSystem.AddAppearance(appearance);
             } else if (value.TryGetValueAsDreamResource(out var refRsc)) {
-                // Bit of a hack. This should use a resource's ID once they are refactored to have them.
-                return $"{(int) RefType.DreamResource}{refRsc.ResourcePath}";
+                refType = RefType.DreamResource;
+                idx = refRsc.Id;
+            }  else if (value.TryGetValueAsProc(out var proc)) {
+                refType = RefType.Proc;
+                idx = proc.Id;
             } else {
                 throw new NotImplementedException($"Ref for {value} is unimplemented");
             }
@@ -233,32 +222,38 @@ namespace OpenDreamRuntime {
             var typeId = (RefType) int.Parse(refString.Substring(0, 1));
             var untypedRefString = refString.Substring(1); // The ref minus its ref type prefix
 
-            if (typeId == RefType.DreamResource) {
-                // DreamResource refs are a little special and use their path instead of an id
-                return new DreamValue(_dreamResourceManager.LoadResource(untypedRefString));
-            } else {
-                refId = int.Parse(untypedRefString);
+            refId = int.Parse(untypedRefString);
 
-                switch (typeId) {
-                    case RefType.Null:
-                        return DreamValue.Null;
-                    case RefType.DreamObject:
-                        foreach (KeyValuePair<DreamObject, int> referenceIdPair in ReferenceIDs) {
-                            if (referenceIdPair.Value == refId) return new DreamValue(referenceIdPair.Key);
-                        }
+            switch (typeId) {
+                case RefType.Null:
+                    return DreamValue.Null;
+                case RefType.DreamObject:
+                    if (ReferenceIDsToDreamObject.TryGetValue(refId, out var dreamObject))
+                        return new(dreamObject);
 
+                    return DreamValue.Null;
+                case RefType.String:
+                    return _objectTree.Strings.Count > refId
+                        ? new DreamValue(_objectTree.Strings[refId])
+                        : DreamValue.Null;
+                case RefType.DreamType:
+                    return _objectTree.Types.Length > refId
+                        ? new DreamValue(_objectTree.Types[refId])
+                        : DreamValue.Null;
+                case RefType.DreamResource:
+                    if (!_dreamResourceManager.TryLoadResource(refId, out var resource))
                         return DreamValue.Null;
-                    case RefType.String:
-                        return _objectTree.Strings.Count > refId
-                            ? new DreamValue(_objectTree.Strings[refId])
-                            : DreamValue.Null;
-                    case RefType.DreamType:
-                        return _objectTree.Types.Length > refId
-                            ? new DreamValue(_objectTree.Types[refId])
-                            : DreamValue.Null;
-                    default:
-                        throw new Exception($"Invalid reference type for ref {refString}");
-                }
+
+                    return new DreamValue(resource);
+                case RefType.DreamAppearance:
+                    _appearanceSystem ??= _entitySystemManager.GetEntitySystem<ServerAppearanceSystem>();
+                    return _appearanceSystem.TryGetAppearance((uint)refId, out IconAppearance? appearance)
+                        ? new DreamValue(appearance)
+                        : DreamValue.Null;
+                case RefType.Proc:
+                    return new(_objectTree.Procs[refId]);
+                default:
+                    throw new Exception($"Invalid reference type for ref {refString}");
             }
         }
 

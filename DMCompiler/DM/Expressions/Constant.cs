@@ -4,6 +4,7 @@ using OpenDreamShared.Json;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using System.IO;
 
 namespace DMCompiler.DM.Expressions {
     abstract class Constant : DMExpression {
@@ -137,6 +138,7 @@ namespace DMCompiler.DM.Expressions {
         #endregion
     }
 
+<<<<<<< HEAD
     /// <summary>
     /// Stores a literal null.
     /// </summary>
@@ -151,6 +153,11 @@ namespace DMCompiler.DM.Expressions {
             }
         }
         public Null(Location location) : base(location, 0f) { }
+=======
+    // null
+    sealed class Null : Constant {
+        public Null(Location location) : base(location) { }
+>>>>>>> master
 
         public override void EmitPushValue(DMObject dmObject, DMProc proc) {
             proc.PushNull();
@@ -162,7 +169,7 @@ namespace DMCompiler.DM.Expressions {
 
         public override bool IsTruthy() => false;
 
-        public override bool TryAsJsonRepresentation(out object json) {
+        public override bool TryAsJsonRepresentation(out object? json) {
             json = null;
             return true;
         }
@@ -249,8 +256,13 @@ namespace DMCompiler.DM.Expressions {
     }
 
     // 4.0, -4.0
+<<<<<<< HEAD
     class Number : Constant {
         public virtual float Value { get; }
+=======
+    sealed class Number : Constant {
+        public float Value { get; }
+>>>>>>> master
 
         public Number(Location location, int value) : base(location) {
             Value = value;
@@ -289,8 +301,20 @@ namespace DMCompiler.DM.Expressions {
 
         public override bool IsTruthy() => Value != 0;
 
-        public override bool TryAsJsonRepresentation(out object json) {
-            json = Value;
+        public override bool TryAsJsonRepresentation(out object? json) {
+            // Positive/Negative infinity cannot be represented in JSON and need a special value
+            if (float.IsPositiveInfinity(Value)) {
+                json = new Dictionary<string, JsonVariableType>() {
+                    {"type", JsonVariableType.PositiveInfinity}
+                };
+            } else if (float.IsNegativeInfinity(Value)) {
+                json = new Dictionary<string, JsonVariableType>() {
+                    {"type", JsonVariableType.NegativeInfinity}
+                };
+            } else {
+                json = Value;
+            }
+
             return true;
         }
 
@@ -434,7 +458,7 @@ namespace DMCompiler.DM.Expressions {
     }
 
     // "abc"
-    class String : Constant {
+    sealed class String : Constant {
         public string Value { get; }
 
         public String(Location location, string value) : base(location) {
@@ -453,7 +477,7 @@ namespace DMCompiler.DM.Expressions {
         public override bool IsTruthy() => Value.Length != 0;
         public bool IsEmpty => Value.Length == 0;
 
-        public override bool TryAsJsonRepresentation(out object json) {
+        public override bool TryAsJsonRepresentation(out object? json) {
             json = Value;
             return true;
         }
@@ -471,16 +495,66 @@ namespace DMCompiler.DM.Expressions {
         }
     }
 
+<<<<<<< HEAD
     // 'abc'
     class Resource : Constant {
         public string Value { get; }
+=======
+    // '[resource_path]'
+    // Where resource_path is one of:
+    //   - path relative to project root (.dme file location)
+    //   - path relative to current .dm source file location
+    //
+    // Note: built .json file depends on resource files, so they should be moving with it
+    // TODO: cache resources to a single .rsc file, as BYOND does
+    internal sealed class Resource : Constant {
+        private static readonly EnumerationOptions SearchOptions = new() {
+            MatchCasing = MatchCasing.CaseInsensitive
+        };
+>>>>>>> master
 
-        public Resource(Location location, string value) : base(location) {
-            Value = value;
+        private readonly string _filePath;
+        private bool _isAmbiguous;
+
+        public Resource(Location location, string filePath) : base(location) {
+            string? finalFilePath = null;
+
+            var outputDir = System.IO.Path.GetDirectoryName(DMCompiler.Settings.Files[0]) ?? "/";
+            if (string.IsNullOrEmpty(outputDir))
+                outputDir = "./";
+
+            var fileName = System.IO.Path.GetFileName(filePath);
+            var fileDir = System.IO.Path.GetDirectoryName(filePath) ?? string.Empty;
+            var directory = FindDirectory(outputDir, fileDir);
+            if (directory != null) {
+                // Perform a case-insensitive search for the file
+                finalFilePath = FindFile(directory, fileName);
+            }
+
+            // Search relative to the source file if it wasn't in the project's directory
+            if (finalFilePath == null) {
+                var sourceDir = System.IO.Path.Combine(outputDir, System.IO.Path.GetDirectoryName(Location.SourceFile) ?? string.Empty);
+                directory = FindDirectory(sourceDir, fileDir);
+
+                if (directory != null)
+                    finalFilePath = FindFile(directory, fileName);
+            }
+
+            if (finalFilePath != null) {
+                _filePath = System.IO.Path.GetRelativePath(outputDir, finalFilePath);
+
+                if (_isAmbiguous) {
+                    DMCompiler.Emit(WarningCode.AmbiguousResourcePath, Location,
+                        $"Resource {filePath} has multiple case-insensitive matches, using {_filePath}");
+                }
+            } else {
+                DMCompiler.Emit(WarningCode.ItemDoesntExist, Location, $"Cannot find file '{filePath}'");
+                _filePath = filePath;
+            }
         }
 
         public override void EmitPushValue(DMObject dmObject, DMProc proc) {
-            proc.PushResource(Value);
+            proc.PushResource(_filePath);
         }
 
         public override Constant CopyWithNewLocation(Location loc) {
@@ -489,18 +563,64 @@ namespace DMCompiler.DM.Expressions {
 
         public override bool IsTruthy() => true;
 
-        public override bool TryAsJsonRepresentation(out object json) {
+        public override bool TryAsJsonRepresentation(out object? json) {
             json = new Dictionary<string, object>() {
                 { "type", JsonVariableType.Resource },
-                { "resourcePath", Value }
+                { "resourcePath", _filePath }
             };
 
             return true;
         }
+
+        /// <summary>
+        /// Performs a recursive case-insensitive for a directory.<br/>
+        /// Marks the resource as ambiguous if multiple are found.
+        /// </summary>
+        /// <param name="directory">Directory to search in (case-sensitive)</param>
+        /// <param name="searching">Directory to search for (case-insensitive)</param>
+        /// <returns>The found directory, null if none</returns>
+        private string? FindDirectory(string directory, string searching) {
+            var searchingDirectories = searching.Split('/', StringSplitOptions.RemoveEmptyEntries);
+
+            foreach (var searchingDirectory in searchingDirectories) {
+                string[] directories = Directory.GetDirectories(directory, searchingDirectory, SearchOptions);
+
+                if (directories.Length == 0)
+                    return null;
+                else if (directories.Length > 1)
+                    _isAmbiguous = true;
+
+                directory = directories[0];
+            }
+
+            return directory;
+        }
+
+        /// <summary>
+        /// Performs a case-insensitive search for a file inside a directory.<br/>
+        /// Marks the resource as ambiguous if multiple are found.
+        /// </summary>
+        /// <param name="directory">Directory to search in (case-sensitive)</param>
+        /// <param name="searching">File to search for (case-insensitive)</param>
+        /// <returns>The found file, null if none</returns>
+        private string? FindFile(string directory, string searching) {
+            var files = Directory.GetFiles(directory, searching, SearchOptions);
+
+            // GetFiles() can't find "..ogg" on Linux for some reason, so try a direct check for the file
+            if (files.Length == 0) {
+                string combined = System.IO.Path.Combine(directory, searching);
+
+                return File.Exists(combined) ? combined : null;
+            } else if (files.Length > 1) {
+                _isAmbiguous = true;
+            }
+
+            return System.IO.Path.Combine(directory, files[0]);
+        }
     }
 
     // /a/b/c
-    class Path : Constant {
+    sealed class Path : Constant {
         public DreamPath Value { get; }
 
         /// <summary>
@@ -545,17 +665,22 @@ namespace DMCompiler.DM.Expressions {
             }
         }
 
+<<<<<<< HEAD
         /// <summary>
         /// This is used to make sure that Constants properly remember their context, <br/>
         /// even as they get folded about the place, into various locations in the source code.
         /// </summary>
         public override Constant CopyWithNewLocation(Location loc) {
             return new Path(loc, _dmObject, Value);
+=======
+        public override string GetNameof(DMObject dmObject, DMProc proc) {
+            return Value.LastElement;
+>>>>>>> master
         }
 
         public override bool IsTruthy() => true;
 
-        public override bool TryAsJsonRepresentation(out object json) {
+        public override bool TryAsJsonRepresentation(out object? json) {
             if (!TryResolvePath(out var pathInfo)) {
                 json = null;
                 return false;

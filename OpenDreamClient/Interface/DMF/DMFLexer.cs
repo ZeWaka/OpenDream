@@ -14,16 +14,22 @@ public sealed class DMFLexer : TextLexer {
     protected override Token ParseNextToken() {
         Token token = base.ParseNextToken();
 
-        if (token == null) {
+        if (token.Type == TokenType.Unknown) {
             char c = GetCurrent();
 
             switch (c) {
                 case ' ':
+                case '\r':
                 case '\t': {
                     Advance();
                     token = CreateToken(TokenType.Skip, c);
                     break;
                 }
+                case '.':
+                    Advance();
+                    token = CreateToken(TokenType.DMF_Period, c);
+                    _parsingAttributeName = true; // Still parsing an attribute name, the last one was actually an element name!
+                    break;
                 case ';':
                     Advance();
                     token = CreateToken(TokenType.DMF_Semicolon, c);
@@ -72,7 +78,7 @@ public sealed class DMFLexer : TextLexer {
 
                     string text = c.ToString();
 
-                    while (!char.IsWhiteSpace(Advance()) && GetCurrent() is not ';' and not '=' && !AtEndOfSource) text += GetCurrent();
+                    while (!char.IsWhiteSpace(Advance()) && GetCurrent() is not ';' and not '=' and not '.' && !AtEndOfSource) text += GetCurrent();
 
                     TokenType tokenType;
                     if (_parsingAttributeName) {
@@ -87,6 +93,7 @@ public sealed class DMFLexer : TextLexer {
                         _parsingAttributeName = false;
                     } else {
                         tokenType = TokenType.DMF_Value;
+                        _parsingAttributeName = true;
                     }
 
                     token = CreateToken(tokenType, text);

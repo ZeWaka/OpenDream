@@ -29,7 +29,9 @@ namespace DMCompiler.Compiler.DMPreprocessor {
         private readonly bool _enableDirectives;
         private readonly Dictionary<string, DMMacro> _defines = new(12288) { // Capacity Note: TG peaks at 9827 at time of writing. Current value is arbitrarily 4096 * 3.
             { "__LINE__", new DMMacroLine() },
-            { "__FILE__", new DMMacroFile() }
+            { "__FILE__", new DMMacroFile() },
+            { "DM_VERSION", new DMMacroVersion() },
+            { "DM_BUILD", new DMMacroBuild() }
         };
         /// <summary>
         /// This stores previous evaluations of if-directives that have yet to find their #endif.<br/>
@@ -39,8 +41,7 @@ namespace DMCompiler.Compiler.DMPreprocessor {
         private readonly Stack<bool?> _lastIfEvaluations = new(16);
         private Location _lastSeenIf = Location.Unknown; // used by the errors emitted for when the above var isn't empty at exit
 
-        private static readonly TokenType[] DirectiveTypes =
-        {
+        private static readonly TokenType[] DirectiveTypes = {
             TokenType.DM_Preproc_Include,
             TokenType.DM_Preproc_Define,
             TokenType.DM_Preproc_Undefine,
@@ -102,6 +103,9 @@ namespace DMCompiler.Compiler.DMPreprocessor {
                         break;
 
                     case TokenType.DM_Preproc_Include:
+                        if (!_currentLineContainsNonWhitespace) {
+                            _bufferedWhitespace.Clear();
+                        }
                         HandleIncludeDirective(token);
                         break;
                     case TokenType.DM_Preproc_Define:
@@ -251,7 +255,7 @@ namespace DMCompiler.Compiler.DMPreprocessor {
             source = source.Replace("\r\n", "\n");
             source += '\n';
 
-            _lexerStack.Push(new DMPreprocessorLexer(includeDir, file, source));
+            _lexerStack.Push(new DMPreprocessorLexer(includeDir, file.Replace('\\', Path.DirectorySeparatorChar), source));
         }
 
         private bool VerifyDirectiveUsage(Token token) {
@@ -752,6 +756,10 @@ namespace DMCompiler.Compiler.DMPreprocessor {
                         parameters.Add(currentParameter);
                         currentParameter = new List<Token>();
                         parameterToken = GetNextToken(true);
+                        while(parameterToken.Type == TokenType.Newline) {
+                            currentParameter.Add(new Token(TokenType.DM_Preproc_LineSplice, "", parameterToken.Location, null));
+                            parameterToken = GetNextToken(true);
+                        }
                         continue;
                     case TokenType.DM_Preproc_Punctuator_LeftParenthesis:
                         parenthesisNesting++;
