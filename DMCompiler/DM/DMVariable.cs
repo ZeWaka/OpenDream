@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics.CodeAnalysis;
+using JetBrains.Annotations;
 using OpenDreamShared.Dream;
 using OpenDreamShared.Dream.Procs;
 
@@ -38,7 +39,6 @@ namespace DMCompiler.DM {
             return clone;
         }
 
-<<<<<<< HEAD
         /// <remarks>
         /// Most variables are not safe to take as a constant-value, even in initial(), <br/>
         /// because we may be arriving here from a member access that doesn't actually access this DMVariable. <br/>
@@ -50,10 +50,7 @@ namespace DMCompiler.DM {
             return Value != null && IsConst;
         }
 
-        public bool TryAsJsonRepresentation(out object valueJson) {
-=======
         public bool TryAsJsonRepresentation([NotNullWhen(true)] out object? valueJson) {
->>>>>>> master
             return Value.TryAsJsonRepresentation(out valueJson);
         }
     }

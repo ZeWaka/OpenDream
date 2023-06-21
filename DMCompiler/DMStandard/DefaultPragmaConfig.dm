@@ -18,11 +18,8 @@
 #pragma TooManyArguments error
 #pragma PointlessParentCall warning
 #pragma PointlessBuiltinCall warning
-<<<<<<< HEAD
 #pragma StupidNullOperation warning
-=======
 #pragma SuspiciousMatrixCall warning
->>>>>>> master
 #pragma MalformedRange warning
 #pragma InvalidRange error
 #pragma InvalidSetStatement error

@@ -43,11 +43,8 @@ namespace OpenDreamShared.Compiler {
         TooManyArguments = 2200,
         PointlessParentCall = 2205,
         PointlessBuiltinCall = 2206, // For pointless calls to issaved() or initial()
-<<<<<<< HEAD
-        StupidNullOperation = 2207, // Did you know that null <= "" is equal to TRUE? I bet the user doesn't until they end up with this warning!
-=======
         SuspiciousMatrixCall = 2207, // Calling matrix() with seemingly the wrong arguments
->>>>>>> master
+        StupidNullOperation = 2208, // Did you know that null <= "" is equal to TRUE? I bet the user doesn't until they end up with this warning!
         MalformedRange = 2300,
         InvalidRange = 2301,
         InvalidSetStatement = 2302,
