@@ -476,6 +476,11 @@ namespace DMCompiler.DM.Expressions {
 
         public Initial(Location location, DMExpression expr) : base(location) {
             _expr = expr;
+            if (_expr is not LValue) {
+                // We do this check here on-construction,
+                // because our expression may poof into a non-LValue later on, after const folding.
+                DMCompiler.Emit(WarningCode.ItemDoesntExist, Location, $"Cannot get initial value of {_expr}");
+            }
         }
 
         public override void EmitPushValue(DMObject dmObject, DMProc proc) {
@@ -483,8 +488,48 @@ namespace DMCompiler.DM.Expressions {
                 lValue.EmitPushInitial(dmObject, proc);
                 return;
             }
+            _expr.EmitPushValue(dmObject, proc);
+        }
 
-            throw new CompileErrorException(Location, $"can't get initial value of {_expr}");
+        public override bool TryAsConstant(out Constant constant) {
+            //If the inner expression itself can prove its const-ness
+            if(_expr.TryAsConstantWithLocation(out Constant expressionConstant, Location)) { // then why not
+                constant = expressionConstant;
+                return true;
+            }
+            switch (_expr) {
+                case GlobalField global: {
+                    DMVariable globalVar = DMObjectTree.Globals[global.Id];
+                    if(globalVar.SafeToTakeAsConstant()) {
+                        return globalVar.Value.TryAsConstantWithLocation(out constant, Location);
+                    }
+                    break;
+                }
+                case Field field: {
+                    if (field.Variable.Value != null) {
+                        // So, an issue we have here.
+                        // This Variable we have stored does not really account for if the src caller is a child of this proc's owner.
+                        // If it were a child, then this variable value may be wrong.
+                        if (field.Variable.SafeToTakeAsConstant()) {
+                            return field.Variable.Value.TryAsConstantWithLocation(out constant, Location);
+                        }
+                    }
+                    break;
+                }
+                case Dereference memberAccess: {
+                    var obj = DMObjectTree.GetDMObject(memberAccess._expr.Path.GetValueOrDefault());
+                    var variable = obj.GetVariable(memberAccess.PropertyName);
+                    if(variable == null) {
+                        variable = obj.GetGlobalVariable(memberAccess.PropertyName);
+                    }
+                    if (variable != null && variable.SafeToTakeAsConstant()) {
+                        return variable.Value.TryAsConstantWithLocation(out constant, Location);
+                    }
+                    break;
+                }
+                // TODO: Make sure that all LValues have a chance at getting const-folded here.
+            }
+            return base.TryAsConstant(out constant);
         }
     }
 

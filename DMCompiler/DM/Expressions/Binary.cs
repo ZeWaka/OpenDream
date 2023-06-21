@@ -289,6 +289,16 @@ namespace DMCompiler.DM.Expressions {
             RHS.EmitPushValue(dmObject, proc);
             proc.Equal();
         }
+
+        public override bool TryAsConstant(out Constant constant) {
+            if (!LHS.TryAsConstant(out var lhs) || !RHS.TryAsConstant(out var rhs)) {
+                constant = null;
+                return false;
+            }
+
+            constant = lhs.Equal(rhs);
+            return true;
+        }
     }
 
     // x != y
@@ -300,6 +310,16 @@ namespace DMCompiler.DM.Expressions {
             LHS.EmitPushValue(dmObject, proc);
             RHS.EmitPushValue(dmObject, proc);
             proc.NotEqual();
+        }
+
+        public override bool TryAsConstant(out Constant constant) {
+            if (!LHS.TryAsConstant(out var lhs) || !RHS.TryAsConstant(out var rhs)) {
+                constant = null;
+                return false;
+            }
+
+            constant = lhs.NotEqual(rhs);
+            return true;
         }
     }
 
@@ -422,19 +442,26 @@ namespace DMCompiler.DM.Expressions {
         public Or(Location location, DMExpression lhs, DMExpression rhs)
             : base(location, lhs, rhs) { }
 
+<<<<<<< HEAD
         public override bool TryAsConstant([NotNullWhen(true)] out Constant? constant) {
             if (LHS.TryAsConstant(out var lhs) && lhs.IsTruthy()) {
                 constant = lhs;
                 return true;
+=======
+        public override bool TryAsConstant(out Constant constant) {
+            if (LHS.TryAsConstant(out var lhs)) { // Short-circuiting!!
+                if(lhs.IsTruthy()) {
+                    constant = lhs;
+                    return true;
+                }
+                if(RHS.TryAsConstant(out var rhs)) {
+                    constant = rhs;
+                    return true;
+                }
+>>>>>>> altoids/simplifier-slaughter
             }
 
-            if (RHS.TryAsConstant(out var rhs)) {
-                constant = rhs;
-                return true;
-            }
-
-            constant = null;
-            return false;
+            return base.TryAsConstant(out constant);
         }
 
         public override void EmitPushValue(DMObject dmObject, DMProc proc) {
@@ -452,19 +479,26 @@ namespace DMCompiler.DM.Expressions {
         public And(Location location, DMExpression lhs, DMExpression rhs)
             : base(location, lhs, rhs) { }
 
+<<<<<<< HEAD
         public override bool TryAsConstant([NotNullWhen(true)] out Constant? constant) {
             if (LHS.TryAsConstant(out var lhs) && !lhs.IsTruthy()) {
                 constant = lhs;
                 return true;
+=======
+        public override bool TryAsConstant(out Constant constant) {
+            if (LHS.TryAsConstant(out var lhs)) { // Short-circuiting!!
+                if (!lhs.IsTruthy()) {
+                    constant = lhs;
+                    return true;
+                }
+                if (RHS.TryAsConstant(out var rhs)) {
+                    constant = rhs;
+                    return true;
+                }
+>>>>>>> altoids/simplifier-slaughter
             }
 
-            if (RHS.TryAsConstant(out var rhs)) {
-                constant = rhs;
-                return true;
-            }
-
-            constant = null;
-            return false;
+            return base.TryAsConstant(out constant);
         }
 
         public override void EmitPushValue(DMObject dmObject, DMProc proc) {

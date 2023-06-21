@@ -15,6 +15,8 @@ namespace DMCompiler.DM.Expressions {
             return true;
         }
 
+        public abstract Constant CopyWithNewLocation(Location loc);
+
         public abstract bool IsTruthy();
 
         #region Unary Operations
@@ -96,15 +98,73 @@ namespace DMCompiler.DM.Expressions {
         public virtual Constant LessThanOrEqual(Constant rhs) {
             throw new CompileErrorException(Location, $"const operation \"{this} <= {rhs}\" is invalid");
         }
+        // Not a virtual because it'd be very annoying to write this for every Constant subtype
+        public Constant Equal(Constant rhs) {
+            switch (this) {
+                case Expressions.Null nil:
+                    if (rhs is Expressions.Null) {
+                        return Number.True(Location);
+                    }
+                    break;
+                case Expressions.Number lhsNumber:
+                    if (rhs is Expressions.Number rhsNumber) {
+                        return Number.BoolToNumber(Location, lhsNumber.Value == rhsNumber.Value);
+                    }
+                    break;
+                case Expressions.String lhsString:
+                    if (rhs is Expressions.String rhsString) {
+                        return Number.BoolToNumber(Location, lhsString.Value == rhsString.Value);
+                    }
+                    break;
+                case Expressions.Resource lhsResource:
+                    if (rhs is Expressions.Resource rhsResource) {
+                        return Number.BoolToNumber(Location, lhsResource.Value == rhsResource.Value);
+                    }
+                    break;
+                case Expressions.Path lhsPath:
+                    if (rhs is Expressions.Path rhsPath) {
+                        return Number.BoolToNumber(Location, lhsPath.Value == rhsPath.Value);
+                    }
+                    break;
+                default:
+                    break;
+            }
+            return Number.False(Location);
+        }
+
+        public Constant NotEqual(Constant rhs) {
+            return Number.BoolToNumber(Location, !this.Equal(rhs).IsTruthy());
+        }
         #endregion
     }
 
+<<<<<<< HEAD
     // null
     sealed class Null : Constant {
         public Null(Location location) : base(location) { }
+=======
+    /// <summary>
+    /// Stores a literal null.
+    /// </summary>
+    /// <remarks>
+    /// The reason we inherit from Number here is that, in all arithmetic operations, Null behaves identically to a numeric value of 0.
+    /// </remarks>
+    sealed class Null : Number {
+        public override float Value {
+            get {
+                EmitNullWarning();
+                return base.Value;
+            }
+        }
+        public Null(Location location) : base(location, 0f) { }
+>>>>>>> altoids/simplifier-slaughter
 
         public override void EmitPushValue(DMObject dmObject, DMProc proc) {
             proc.PushNull();
+        }
+
+        public override Constant CopyWithNewLocation(Location loc) {
+            return new Null(loc);
         }
 
         public override bool IsTruthy() => false;
@@ -114,38 +174,95 @@ namespace DMCompiler.DM.Expressions {
             return true;
         }
 
+/*
+    Null has some extremely cursed behaviour with how it compares with strings. See below:
+    ASSERT( (null > "") == 0 )
+    ASSERT( (null >= "") == 1 )
+    ASSERT( (null == "") == 0 )
+    ASSERT( (null <= "") == 1 )
+    ASSERT( (null < "") == 0 )
+    ASSERT( (null != "") == 1 )
+    Further, the opposite comparisons (like "" > null) just runtime. This is a quirky edgecase.
+    The following is HOPEFULLY comparison/equality ops that abide to this ridiculous behaviour.
+*/
+
         public override Constant GreaterThan(Constant rhs) {
-            if (rhs is not Number rhsNum) {
-                return base.GreaterThan(rhs);
+            if(rhs is Number rhsNum) {
+                return new Number(Location, (0 > rhsNum.Value) ? 1 : 0);
             }
-            return new Number(Location, (0 > rhsNum.Value) ? 1 : 0);
+            if(rhs is String rhsString) {
+                //null > "" is 0
+                //null > "foo" is 0
+                return Number.False(Location);
+            }
+            return base.GreaterThan(rhs);
         }
 
         public override Constant GreaterThanOrEqual(Constant rhs) {
-            if (rhs is not Number rhsNum) {
-                return base.GreaterThanOrEqual(rhs);
+            if (rhs is Number rhsNum) {
+                return new Number(Location, (0 >= rhsNum.Value) ? 1 : 0);
             }
-            return new Number(Location, (0 >= rhsNum.Value) ? 1 : 0);
+            if(rhs is String rhsString) {
+                if(rhsString.IsEmpty) { //(null >= "") == 1
+                    DMCompiler.Emit(WarningCode.StupidNullOperation, Location, $"'null >= \"{rhsString.Value}\"' has the unexpected value of TRUE");
+                    return Number.True(Location);
+                }
+                return Number.False(Location);
+            }
+            return base.GreaterThanOrEqual(rhs);
+
         }
 
         public override Constant LessThan(Constant rhs) {
-            if (rhs is not Number rhsNum) {
-                return base.LessThan(rhs);
+            if (rhs is Number rhsNum) {
+                return new Number(Location, (0 < rhsNum.Value) ? 1 : 0);
             }
-            return new Number(Location, (0 < rhsNum.Value) ? 1 : 0);
+            if(rhs is String rhsString) {
+                //null < "" is 0
+                //null < "foo" is 1
+                if(rhsString.IsEmpty)
+                    return Number.False(Location);
+                else
+                    return Number.True(Location);
+            }
+            return base.LessThan(rhs);
+
         }
 
         public override Constant LessThanOrEqual(Constant rhs) {
-            if (rhs is not Number rhsNum) {
-                return base.LessThanOrEqual(rhs);
+            if (rhs is Number rhsNum) {
+                return new Number(Location, (0 <= rhsNum.Value) ? 1 : 0);
             }
-            return new Number(Location, (0 <= rhsNum.Value) ? 1 : 0);
+            if(rhs is String rhsString) {
+                if(rhsString.IsEmpty) { //null <= "" is 1!
+                    DMCompiler.Emit(WarningCode.StupidNullOperation,Location, $"'null <= \"{rhsString.Value}\"' has the unexpected value of TRUE");
+                }
+                //null <= "foo" is 1, too
+                return Number.True(Location);
+            }
+            return base.LessThanOrEqual(rhs);
+        }
+        void EmitNullWarning() {
+            DMCompiler.Emit(WarningCode.StupidNullOperation, Location, "Null value is coerced to 0 by this operation");
+        }
+
+        public override Constant Add(Constant rhs) {
+            if (rhs is String rhsString) {
+                DMCompiler.Emit(WarningCode.StupidNullOperation, Location, "Null value is ignored in addition with string");
+                return rhsString;
+            }
+            return base.Add(rhs);
         }
     }
 
     // 4.0, -4.0
+<<<<<<< HEAD
     sealed class Number : Constant {
         public float Value { get; }
+=======
+    class Number : Constant {
+        public virtual float Value { get; }
+>>>>>>> altoids/simplifier-slaughter
 
         public Number(Location location, int value) : base(location) {
             Value = value;
@@ -155,9 +272,32 @@ namespace DMCompiler.DM.Expressions {
             Value = value;
         }
 
+        /// <summary> Makes a TRUE. </summary>
+        public static Number True(Location location) {
+            return new Number(location, 1f);
+        }
+
+        /// <summary> Makes a FALSE. </summary>
+        public static Number False(Location location) {
+            return new Number(location, 0f);
+        }
+
+        public static Number BoolToNumber(Location location, bool value) {
+            if(value) {
+                return True(location);
+            } else {
+                return False(location);
+            }
+        }
+
         public override void EmitPushValue(DMObject dmObject, DMProc proc) {
             proc.PushFloat(Value);
         }
+
+        public override Constant CopyWithNewLocation(Location loc) {
+            return new Number(loc,Value);
+        }
+
 
         public override bool IsTruthy() => Value != 0;
 
@@ -329,7 +469,13 @@ namespace DMCompiler.DM.Expressions {
             proc.PushString(Value);
         }
 
+
+        public override Constant CopyWithNewLocation(Location loc) {
+            return new String(loc, Value);
+        }
+
         public override bool IsTruthy() => Value.Length != 0;
+        public bool IsEmpty => Value.Length == 0;
 
         public override bool TryAsJsonRepresentation(out object? json) {
             json = Value;
@@ -338,6 +484,10 @@ namespace DMCompiler.DM.Expressions {
 
         public override Constant Add(Constant rhs) {
             if (rhs is not String rhsString) {
+                if(rhs is Expressions.Null) {
+                    DMCompiler.ForcedWarning(rhs.Location, "Null value is ignored in addition with string");
+                    return this;
+                }
                 return base.Add(rhs);
             }
 
@@ -345,6 +495,7 @@ namespace DMCompiler.DM.Expressions {
         }
     }
 
+<<<<<<< HEAD
     // '[resource_path]'
     // Where resource_path is one of:
     //   - path relative to project root (.dme file location)
@@ -356,6 +507,11 @@ namespace DMCompiler.DM.Expressions {
         private static readonly EnumerationOptions SearchOptions = new() {
             MatchCasing = MatchCasing.CaseInsensitive
         };
+=======
+    // 'abc'
+    class Resource : Constant {
+        public string Value { get; }
+>>>>>>> altoids/simplifier-slaughter
 
         private readonly string _filePath;
         private bool _isAmbiguous;
@@ -399,6 +555,10 @@ namespace DMCompiler.DM.Expressions {
 
         public override void EmitPushValue(DMObject dmObject, DMProc proc) {
             proc.PushResource(_filePath);
+        }
+
+        public override Constant CopyWithNewLocation(Location loc) {
+            return new Resource(loc, Value);
         }
 
         public override bool IsTruthy() => true;
@@ -505,8 +665,17 @@ namespace DMCompiler.DM.Expressions {
             }
         }
 
+<<<<<<< HEAD
         public override string GetNameof(DMObject dmObject, DMProc proc) {
             return Value.LastElement;
+=======
+        /// <summary>
+        /// This is used to make sure that Constants properly remember their context, <br/>
+        /// even as they get folded about the place, into various locations in the source code.
+        /// </summary>
+        public override Constant CopyWithNewLocation(Location loc) {
+            return new Path(loc, _dmObject, Value);
+>>>>>>> altoids/simplifier-slaughter
         }
 
         public override bool IsTruthy() => true;

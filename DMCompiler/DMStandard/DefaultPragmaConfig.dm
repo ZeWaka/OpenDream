@@ -18,7 +18,11 @@
 #pragma TooManyArguments error
 #pragma PointlessParentCall warning
 #pragma PointlessBuiltinCall warning
+<<<<<<< HEAD
 #pragma SuspiciousMatrixCall warning
+=======
+#pragma StupidNullOperation warning
+>>>>>>> altoids/simplifier-slaughter
 #pragma MalformedRange warning
 #pragma InvalidRange error
 #pragma InvalidSetStatement error
