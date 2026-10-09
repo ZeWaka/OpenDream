@@ -549,7 +549,7 @@ internal sealed class DreamIcon(RenderTargetPool renderTargetPool, IDreamInterfa
             var requiredSpace = filterId.CalculateRequiredRenderSpace(pong.Size,
                 renderSource => viewOverlay.RenderSourceLookup.GetValueOrDefault(renderSource)?.Size ?? new(0, 0));
             var padding = (Vector2i.ComponentMax(requiredSpace - pong.Size, Vector2i.Zero) + 1) / 2;
-            var wantsSrgbEncoded = filterId is DreamFilterBlur;
+            var wantsSrgbEncoded = filterId is DreamFilterBlur or DreamFilterMotionBlur;
             if (padding != Vector2i.Zero || wantsSrgbEncoded != srgbEncoded) {
                 if (wantsSrgbEncoded == srgbEncoded) {
                     shader = DreamViewOverlay.ColorInstance;
