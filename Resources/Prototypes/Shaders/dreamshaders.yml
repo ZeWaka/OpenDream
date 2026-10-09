@@ -88,11 +88,12 @@
 - type: shader
   id: angular_blur
   kind: source
-  path: "/Shaders/empty.swsl"
+  path: "/Shaders/angular_blur.swsl"
   params:
     x: 0
     y: 0
-    size: 1   
+    size: 0.01
+    offset: 0
 
 - type: shader
   id: bloom
@@ -148,11 +149,12 @@
 - type: shader
   id: radial_blur
   kind: source
-  path: "/Shaders/empty.swsl"
+  path: "/Shaders/radial_blur.swsl"
   params:
     x: 0
     y: 0
-    size: 0
+    size: 1
+    offset: 0
 
 - type: shader
   id: rays

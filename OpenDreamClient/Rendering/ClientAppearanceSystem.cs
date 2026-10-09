@@ -57,6 +57,10 @@ internal sealed partial class ClientAppearanceSystem : SharedAppearanceSystem {
         public bool Used = true;
     }
 
+    private static readonly BlurKernel FixedBlurKernel = new(BlurKernel.MaxSigma);
+    private static readonly float[] FixedBlurWeights = GetKernelArray(FixedBlurKernel.GetWeight);
+    private static readonly float[] FixedBlurOffsets = GetKernelArray(FixedBlurKernel.GetOffset);
+
     private Dictionary<uint, ImmutableAppearance> _appearances = new();
     private readonly Dictionary<uint, List<Action<ImmutableAppearance>>> _appearanceLoadCallbacks = new();
     private readonly Dictionary<uint, DreamIcon> _turfIcons = new();
@@ -306,8 +310,23 @@ internal sealed partial class ClientAppearanceSystem : SharedAppearanceSystem {
                 instance.SetParameter("y",alpha.Y);
                 instance.SetParameter("flags",alpha.Flags);
                 break;
-            case DreamFilterAngularBlur angularBlur:
+            case DreamFilterAngularBlur angularBlur: {
+                instance.SetParameter("x", angularBlur.X);
+                instance.SetParameter("y", angularBlur.Y);
+                instance.SetParameter("size", angularBlur.Size);
+                instance.SetParameter("offset", angularBlur.Offset);
+                instance.SetParameter("weights", FixedBlurWeights);
+
+                var rotations = new Vector2[BlurKernel.MaxTaps];
+                float step = MathHelper.DegreesToRadians(angularBlur.Size) / BlurKernel.MaxSigma;
+                for (int i = 0; i < rotations.Length; i++) {
+                    (float sin, float cos) = MathF.SinCos(FixedBlurOffsets[i] * step);
+                    rotations[i] = new Vector2(cos, sin);
+                }
+
+                instance.SetParameter("rotations", rotations);
                 break;
+            }
             case DreamFilterBloom bloom:
                 break;
             case DreamFilterColor color: {
@@ -337,6 +356,12 @@ internal sealed partial class ClientAppearanceSystem : SharedAppearanceSystem {
                 instance.SetParameter("flags", outline.Flags);
                 break;
             case DreamFilterRadialBlur radialBlur:
+                instance.SetParameter("x", radialBlur.X);
+                instance.SetParameter("y", radialBlur.Y);
+                instance.SetParameter("size", radialBlur.Size);
+                instance.SetParameter("offset", radialBlur.Offset);
+                instance.SetParameter("weights", FixedBlurWeights);
+                instance.SetParameter("offsets", FixedBlurOffsets);
                 break;
             case DreamFilterRays rays:
                 break;
@@ -366,6 +391,14 @@ internal sealed partial class ClientAppearanceSystem : SharedAppearanceSystem {
         instance.SetParameter("offsets", offsets);
         instance.SetParameter("taps", kernel.Taps);
         return instance;
+    }
+
+    private static float[] GetKernelArray(Func<int, float> getTap) {
+        var array = new float[BlurKernel.MaxTaps];
+        for (int i = 0; i < array.Length; i++)
+            array[i] = getTap(i);
+
+        return array;
     }
 
     public override ImmutableAppearance MustGetAppearanceById(uint appearanceId) {

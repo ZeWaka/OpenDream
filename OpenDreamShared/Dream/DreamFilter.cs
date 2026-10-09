@@ -79,6 +79,10 @@ public partial record DreamFilter {
             case DreamFilterOutline outline:
                 requiredSpace += new Vector2(outline.Size) * 2;
                 break;
+
+            // TODO: Consider padding angular_blur and radial_blur, which clip like in BYOND.
+            // With d the distance to the farthest corner, radial reaches d * size * 17.5 / 6
+            // and angular reaches d * sin(size * 17.5 / 6 degrees).
         }
 
         return (Vector2i)requiredSpace;
@@ -98,7 +102,8 @@ public sealed partial record DreamFilterAlpha : DreamFilter {
 public sealed partial record DreamFilterAngularBlur : DreamFilter {
     [ViewVariables, DataField("x")] public float X;
     [ViewVariables, DataField("y")] public float Y;
-    [ViewVariables, DataField("size")] public float Size = 1f;
+    [ViewVariables, DataField("size")] public float Size = 0.01f;
+    [ViewVariables, DataField("offset")] public float Offset;
 }
 
 [Serializable, NetSerializable]
@@ -305,7 +310,8 @@ public sealed partial record DreamFilterOutline : DreamFilter {
 public sealed partial record DreamFilterRadialBlur : DreamFilter {
     [ViewVariables, DataField("x")] public float X;
     [ViewVariables, DataField("y")] public float Y;
-    [ViewVariables, DataField("size")] public float Size = 0.01f;
+    [ViewVariables, DataField("size")] public float Size = 1f; // Not 0.01 like the DM reference says
+    [ViewVariables, DataField("offset")] public float Offset;
 }
 
 [Serializable, NetSerializable]

@@ -1,0 +1,39 @@
+// Blurs along circles around (x, y). The angular sigma is `size` degrees.
+
+light_mode unshaded;
+blend_mode none;
+
+uniform highp float x;
+uniform highp float y;
+uniform highp float size;
+uniform highp float offset;
+uniform highp float[10] weights;
+uniform highp vec2[10] rotations;
+uniform highp vec2 canvasPadding;
+
+void fragment() {
+    highp vec2 texSize = 1.0 / TEXTURE_PIXEL_SIZE;
+    highp vec2 pos = UV * texSize;
+
+    highp vec2 dir = pos - (texSize * 0.5 + vec2(x + canvasPadding.x, y - canvasPadding.y));
+    highp float len = length(dir);
+    highp float reach = len - max(offset, 0.0);
+
+    highp vec4 sum = texture2D(TEXTURE, UV);
+
+    if (size != 0.0 && reach > 0.0) {
+        dir *= reach / len;
+        highp vec2 center = pos - dir;
+        highp vec2 side = vec2(dir.y, -dir.x);
+
+        sum *= weights[0];
+        for (int i = 1; i < 10; i++) {
+            highp vec2 arc = center + dir * rotations[i].x;
+            highp vec2 perp = side * rotations[i].y;
+            sum += texture2D(TEXTURE, (arc - perp) * TEXTURE_PIXEL_SIZE) * weights[i];
+            sum += texture2D(TEXTURE, (arc + perp) * TEXTURE_PIXEL_SIZE) * weights[i];
+        }
+    }
+
+    COLOR = sum;
+}

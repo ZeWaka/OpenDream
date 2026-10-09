@@ -549,7 +549,7 @@ internal sealed class DreamIcon(RenderTargetPool renderTargetPool, IDreamInterfa
             var requiredSpace = filterId.CalculateRequiredRenderSpace(pong.Size,
                 renderSource => viewOverlay.RenderSourceLookup.GetValueOrDefault(renderSource)?.Size ?? new(0, 0));
             var padding = (Vector2i.ComponentMax(requiredSpace - pong.Size, Vector2i.Zero) + 1) / 2;
-            var wantsSrgbEncoded = filterId is DreamFilterBlur or DreamFilterMotionBlur;
+            var wantsSrgbEncoded = filterId is DreamFilterBlur or DreamFilterMotionBlur or DreamFilterAngularBlur or DreamFilterRadialBlur;
             if (padding != Vector2i.Zero || wantsSrgbEncoded != srgbEncoded) {
                 if (wantsSrgbEncoded == srgbEncoded) {
                     shader = DreamViewOverlay.ColorInstance;
@@ -561,7 +561,11 @@ internal sealed class DreamIcon(RenderTargetPool renderTargetPool, IDreamInterfa
                 ReplaceCanvas(pong.Size + padding * 2, padding, wantsSrgbEncoded);
             }
 
+            // BYOND offsets the angular_blur and radial_blur center by how much earlier filters grew the canvas
+            var canvasPadding = (Vector2)(pong.Size - frame.Size) / 2f;
             foreach (var pass in appearanceSystem.GetFilterShaders(filterId, viewOverlay.RenderSourceLookup)) {
+                pass.SetParameter("canvasPadding", canvasPadding);
+
                 target = ping;
                 shader = pass;
                 offset = Vector2.Zero;
