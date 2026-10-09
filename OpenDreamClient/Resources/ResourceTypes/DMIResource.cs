@@ -3,12 +3,22 @@ using OpenDreamShared.Dream;
 using OpenDreamShared.Resources;
 using Robust.Client.Graphics;
 using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Formats;
+using SixLabors.ImageSharp.Formats.Bmp;
+using SixLabors.ImageSharp.Formats.Png;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
 
 namespace OpenDreamClient.Resources.ResourceTypes;
 
 public sealed class DMIResource : DreamResource {
+    // Same formats DMIParser accepts; keeps other decoders (e.g. vulnerable TIFF) away from server data.
+    private static readonly DecoderOptions DecoderOptions = new() {
+        Configuration = new Configuration(new PngConfigurationModule(), new BmpConfigurationModule()) {
+            PreferContiguousImageBuffers = true // Needed by LoadTextureFromImage.
+        }
+    };
+
     public Texture Texture;
     public Vector2i IconSize;
     public DMIParser.ParsedDMIDescription Description;
@@ -31,7 +41,7 @@ public sealed class DMIResource : DreamResource {
 
         dmiStream.Seek(0, SeekOrigin.Begin);
 
-        Image<Rgba32> image = Image.Load<Rgba32>(dmiStream);
+        Image<Rgba32> image = Image.Load<Rgba32>(DecoderOptions, dmiStream);
         Texture = IoCManager.Resolve<IClyde>().LoadTextureFromImage(image, name: $"DMI Resource #{Id}");
         IconSize = new Vector2i(description.Width, description.Height);
         Description = description;
@@ -57,7 +67,7 @@ public sealed class DMIResource : DreamResource {
 
         dmiStream.Seek(0, SeekOrigin.Begin);
 
-        Image<Rgba32> image = Image.Load<Rgba32>(dmiStream);
+        Image<Rgba32> image = Image.Load<Rgba32>(DecoderOptions, dmiStream);
         var state = description.GetStateOrDefault(stateName);
         if (!(state?.Directions.TryGetValue(AtomDirection.South, out var frames) ?? false))
             return null;
