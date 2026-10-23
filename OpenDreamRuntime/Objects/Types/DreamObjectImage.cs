@@ -215,7 +215,8 @@ public sealed class DreamObjectImage : DreamObject {
                 break;
             }
             case "vis_contents": {
-                value.TryGetValueAsDreamList(out var valueList);
+                if (value.TryGetValueAsDreamList(out var valueList) && valueList == _visContents)
+                    break;
 
                 _visContents.Cut();
 

@@ -1021,6 +1021,12 @@ public sealed class DreamVisContentsList : DreamList {
     }
 
     protected override void HandleDeletion() {
+        // DecRef() can delete an entry and run its Del(), which might modify this list, so empty it first
+        var visContents = _visContents.ToArray();
+        _visContents.Clear();
+        foreach (var visContent in visContents) // could do raw iter if this is too unperformant
+            visContent.DecRef();
+
         _visContentsSystem?.UpdateHolder(this);
         base.HandleDeletion();
     }
@@ -1038,12 +1044,15 @@ public sealed class DreamVisContentsList : DreamList {
         int count = _visContents.Count + 1;
         if (end == 0 || end > count) end = count;
 
+        var removed = _visContents.GetRange(start - 1, end - start);
         _visContents.RemoveRange(start - 1, end - start);
         AtomManager.UpdateAppearance(Owner, appearance => {
             appearance.VisContents.RemoveRange(start - 1, end - start);
         });
 
         _visContentsSystem?.UpdateHolder(this);
+        foreach (var visContent in removed)
+            visContent.DecRef();
     }
 
     public override DreamValue GetValue(DreamValue key) {
@@ -1072,6 +1081,7 @@ public sealed class DreamVisContentsList : DreamList {
             return; // vis_contents cannot contain duplicates
 
         _visContents.Add(atom);
+        atom.IncRef();
 
         // TODO: Support turfs in vis_contents
         var entity = (atom as DreamObjectMovable)?.Entity ?? EntityUid.Invalid;
@@ -1098,6 +1108,7 @@ public sealed class DreamVisContentsList : DreamList {
         });
 
         _visContentsSystem?.UpdateHolder(this);
+        atom.DecRef();
     }
 
     public override int GetLength() {
@@ -1367,7 +1378,7 @@ public sealed class ClientImagesList(DreamObjectTree objectTree, ServerClientIma
             return;
 
         clientImagesSystem?.AddImageObject(connection, image);
-        _imageObjects.Add(value);
+        _imageObjects.Add(value); // TODO: IncRef/DecRef like ClientScreenList
     }
 
     public override void RemoveValue(DreamValue value) {

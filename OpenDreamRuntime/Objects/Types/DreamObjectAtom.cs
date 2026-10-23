@@ -135,9 +135,12 @@ public class DreamObjectAtom(DreamObjectDefinition objectDefinition) : DreamObje
                 break;
             }
             case "vis_contents": {
+                if (value.TryGetValueAsDreamList(out var valueList) && valueList == _visContents)
+                    break;
+
                 VisContents.Cut();
 
-                if (value.TryGetValueAsDreamList(out var valueList)) {
+                if (valueList != null) {
                     // TODO: This should postpone UpdateAppearance until after everything is added
                     foreach (DreamValue visContentsValue in valueList.EnumerateValues()) {
                         VisContents.AddValue(visContentsValue);
