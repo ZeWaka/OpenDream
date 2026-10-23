@@ -229,6 +229,9 @@ public class DreamObjectMovable : DreamObjectAtom {
             default:
                 throw new ArgumentException($"Invalid loc {loc}");
         }
+
+        if (VisContentsList != null)
+            VisContentsSystem?.UpdateHolder(VisContentsList);
     }
 
     private void SetScreenLoc(string? screenLoc) {
