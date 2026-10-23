@@ -1020,6 +1020,11 @@ public sealed class DreamVisContentsList : DreamList {
         Owner = atom;
     }
 
+    protected override void HandleDeletion() {
+        _visContentsSystem?.UpdateHolder(this);
+        base.HandleDeletion();
+    }
+
     public override List<DreamValue> GetValues() {
         return EnumerateValues().ToList();
     }
@@ -1037,6 +1042,8 @@ public sealed class DreamVisContentsList : DreamList {
         AtomManager.UpdateAppearance(Owner, appearance => {
             appearance.VisContents.RemoveRange(start - 1, end - start);
         });
+
+        _visContentsSystem?.UpdateHolder(this);
     }
 
     public override DreamValue GetValue(DreamValue key) {
@@ -1055,37 +1062,42 @@ public sealed class DreamVisContentsList : DreamList {
     }
 
     public override void AddValue(DreamValue value) {
-        EntityUid entity;
-        if (value.TryGetValueAsDreamObject<DreamObjectMovable>(out var movable)) {
-            if (_visContents.Contains(movable))
-                return; // vis_contents cannot contain duplicates
-            _visContents.Add(movable);
-            entity = movable.Entity;
-        } else if (value.TryGetValueAsDreamObject<DreamObjectTurf>(out var turf)) {
-            if (_visContents.Contains(turf))
-                return; // vis_contents cannot contain duplicates
-            _visContents.Add(turf);
-            entity = EntityUid.Invalid; // TODO: Support turfs in vis_contents
-        } else if (value == DreamValue.Null) {
+        if (value == DreamValue.Null)
             return; // vis_contents cannot contain nulls
-        } else {
+        if (!value.TryGetValueAsDreamObject<DreamObjectAtom>(out var atom))
             throw new DMException($"Cannot add {value} to a vis_contents list");
-        }
+        if (atom is not (DreamObjectMovable or DreamObjectTurf)) // e.g. areas
+            throw new DMException($"Cannot add {value} to a vis_contents list");
+        if (_visContents.Contains(atom))
+            return; // vis_contents cannot contain duplicates
 
+        _visContents.Add(atom);
+
+        // TODO: Support turfs in vis_contents
+        var entity = (atom as DreamObjectMovable)?.Entity ?? EntityUid.Invalid;
         AtomManager.UpdateAppearance(Owner, appearance => {
             // Add even an invalid UID to keep this and _visContents in sync
             appearance.VisContents.Add(EntityManager.GetNetEntity(entity));
         });
+
+        _visContentsSystem?.UpdateHolder(this);
     }
 
     public override void RemoveValue(DreamValue value) {
-        if (!value.TryGetValueAsDreamObject<DreamObjectMovable>(out var movable))
+        if (!value.TryGetValueAsDreamObject<DreamObjectAtom>(out var atom))
             return;
 
-        _visContents.Remove(movable);
+        var index = _visContents.IndexOf(atom);
+        if (index == -1)
+            return; // Not in the list
+
+        _visContents.RemoveAt(index);
+
         AtomManager.UpdateAppearance(Owner, appearance => {
-            appearance.VisContents.Remove(EntityManager.GetNetEntity(movable.Entity));
+            appearance.VisContents.RemoveAt(index); // Kept in sync with _visContents
         });
+
+        _visContentsSystem?.UpdateHolder(this);
     }
 
     public override int GetLength() {
