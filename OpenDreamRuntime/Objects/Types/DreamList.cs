@@ -1009,14 +1009,16 @@ public sealed class DreamOverlaysList(DreamObjectDefinition listDef, DreamObject
 public sealed class DreamVisContentsList : DreamList {
     private readonly PvsOverrideSystem? _pvsOverrideSystem;
 
-    private readonly List<DreamObjectAtom> _visContents = new();
-    private readonly DreamObject _owner; // atom or image
+    private readonly List<DreamObjectAtom> _visContents = [];
+
+    public readonly DreamObject Owner; // atom or image
+    public IReadOnlyList<DreamObjectAtom> VisContents => _visContents;
 
     public DreamVisContentsList(DreamObjectDefinition listDef, PvsOverrideSystem? pvsOverrideSystem, DreamObject atom) : base(listDef, 0) {
         IoCManager.InjectDependencies(this);
 
         _pvsOverrideSystem = pvsOverrideSystem;
-        _owner = atom;
+        Owner = atom;
     }
 
     public override List<DreamValue> GetValues() {
@@ -1033,7 +1035,7 @@ public sealed class DreamVisContentsList : DreamList {
         if (end == 0 || end > count) end = count;
 
         _visContents.RemoveRange(start - 1, end - start);
-        AtomManager.UpdateAppearance(_owner, appearance => {
+        AtomManager.UpdateAppearance(Owner, appearance => {
             appearance.VisContents.RemoveRange(start - 1, end - start);
         });
     }
@@ -1075,7 +1077,7 @@ public sealed class DreamVisContentsList : DreamList {
         if (entity != EntityUid.Invalid)
             _pvsOverrideSystem?.AddGlobalOverride(entity);
 
-        AtomManager.UpdateAppearance(_owner, appearance => {
+        AtomManager.UpdateAppearance(Owner, appearance => {
             // Add even an invalid UID to keep this and _visContents in sync
             appearance.VisContents.Add(EntityManager.GetNetEntity(entity));
         });
@@ -1086,7 +1088,7 @@ public sealed class DreamVisContentsList : DreamList {
             return;
 
         _visContents.Remove(movable);
-        AtomManager.UpdateAppearance(_owner, appearance => {
+        AtomManager.UpdateAppearance(Owner, appearance => {
             appearance.VisContents.Remove(EntityManager.GetNetEntity(movable.Entity));
         });
     }

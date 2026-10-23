@@ -14,6 +14,9 @@ public class DreamObjectAtom(DreamObjectDefinition objectDefinition) : DreamObje
     private DreamFilterList? _filters;
     private DreamList? _visLocs; // TODO: Implement
 
+    /// <summary>vis_contents, if it was ever created</summary>
+    public DreamVisContentsList? VisContentsList => _visContents;
+
     protected string GetRTEntityDesc() {
         if (AtomManager.TryGetAppearance(this, out var appearance) && appearance.Desc != null)
             return appearance.Desc;

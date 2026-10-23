@@ -16,6 +16,9 @@ public sealed class DreamObjectImage : DreamObject {
     public readonly bool IsMutableAppearance;
     public MutableAppearance? MutableAppearance;
 
+    /// <summary>vis_contents, or null for a /mutable_appearance</summary>
+    public DreamVisContentsList? VisContentsList => _visContents as DreamVisContentsList;
+
     /// <summary>
     /// All the args in /image/New() after "icon" and "loc", in their correct order
     /// </summary>
