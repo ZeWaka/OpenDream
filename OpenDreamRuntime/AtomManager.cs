@@ -596,33 +596,22 @@ public sealed partial class AtomManager {
     public bool TryCreateAppearanceFrom(DreamValue value, [NotNullWhen(true)] out MutableAppearance? appearance) {
         if (value.TryGetValueAsAppearance(out var copyFromAppearance)) {
             appearance = MutableAppearance.GetCopy(copyFromAppearance);
-            return true;
-        }
-
-        if (value.TryGetValueAsDreamObject<DreamObjectImage>(out var copyFromImage)) {
+        } else if (value.TryGetValueAsDreamObject<DreamObjectImage>(out var copyFromImage)) {
             appearance = MustGetAppearance(copyFromImage).ToMutable();
-            return true;
-        }
-
-        if (value.TryGetValueAsType(out var copyFromType)) {
+        } else if (value.TryGetValueAsType(out var copyFromType)) {
             appearance = MutableAppearance.GetCopy(GetAppearanceFromDefinition(copyFromType.ObjectDefinition));
-            return true;
-        }
-
-        if (value.TryGetValueAsDreamObject<DreamObjectAtom>(out var copyFromAtom)) {
+        } else if (value.TryGetValueAsDreamObject<DreamObjectAtom>(out var copyFromAtom)) {
             appearance = MustGetAppearance(copyFromAtom).ToMutable();
-            return true;
-        }
-
-        if (_resourceManager.TryLoadIcon(value, out var iconResource)) {
+        } else if (_resourceManager.TryLoadIcon(value, out var iconResource)) {
             appearance = MutableAppearance.Get();
             appearance.Icon = iconResource.Id;
-
-            return true;
+        } else {
+            appearance = null;
+            return false;
         }
 
-        appearance = null;
-        return false;
+        appearance.VisContents.Clear(); // vis_contents belong to their atom, copies don't get them
+        return true;
     }
 
     // TODO: This should probably return an ImmutableAppearance so they don't have to be sent through ServerAppearanceSystem.AddAppearance()

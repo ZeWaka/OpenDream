@@ -129,9 +129,10 @@ public sealed class DreamObjectImage : DreamObject {
                 if (!AtomManager.TryCreateAppearanceFrom(value, out var newAppearance))
                     return; // Ignore attempts to set an invalid appearance
 
-                // The dir does not get changed
+                // The dir and vis_contents do not get changed
                 var originalAppearance = AtomManager.MustGetAppearance(this);
                 newAppearance.Direction = originalAppearance.Direction;
+                newAppearance.VisContents.AddRange(originalAppearance.VisContents);
                 AtomManager.SetAtomAppearance(this, newAppearance);
                 newAppearance.Dispose();
                 break;
