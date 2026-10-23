@@ -1,13 +1,9 @@
 ﻿using OpenDreamRuntime.Objects.Types;
 using OpenDreamShared.Rendering;
-using OpenDreamRuntime.Objects;
-using Robust.Server.GameStates;
 
 namespace OpenDreamRuntime.Rendering;
 
 public sealed partial class ServerClientImagesSystem : SharedClientImagesSystem {
-    [Dependency] private PvsOverrideSystem _pvsOverrideSystem = default!;
-
     public void AddImageObject(DreamConnection connection, DreamObjectImage imageObject) {
         if (connection.Session == null || imageObject.GetAttachedLoc() is not { } loc)
             return;
@@ -21,10 +17,7 @@ public sealed partial class ServerClientImagesSystem : SharedClientImagesSystem 
             turfCoords = new Vector3(turf.X, turf.Y, turf.Z);
 
         NetEntity ent = GetNetEntity(locEntity);
-        EntityUid imageObjectEntity = imageObject.Entity;
-        NetEntity imageObjectNetEntity = GetNetEntity(imageObjectEntity);
-        if (imageObjectEntity != EntityUid.Invalid)
-            _pvsOverrideSystem.AddSessionOverride(imageObjectEntity, connection.Session);
+        NetEntity imageObjectNetEntity = GetNetEntity(imageObject.Entity);
         RaiseNetworkEvent(new AddClientImageEvent(ent, turfCoords, imageObjectNetEntity), connection.Session.Channel);
     }
 
@@ -41,9 +34,6 @@ public sealed partial class ServerClientImagesSystem : SharedClientImagesSystem 
             turfCoords = new Vector3(turf.X, turf.Y, turf.Z);
 
         NetEntity ent = GetNetEntity(locEntity);
-        EntityUid imageObjectEntity = imageObject.Entity;
-        if (imageObjectEntity != EntityUid.Invalid)
-            _pvsOverrideSystem.RemoveSessionOverride(imageObjectEntity, connection.Session);
         NetEntity imageObjectNetEntity = GetNetEntity(imageObject.Entity);
         RaiseNetworkEvent(new RemoveClientImageEvent(ent, turfCoords, imageObjectNetEntity), connection.Session.Channel);
     }

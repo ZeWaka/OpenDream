@@ -6,8 +6,9 @@ namespace OpenDreamClient.Rendering;
 internal sealed partial class ClientImagesSystem : SharedClientImagesSystem {
     [Dependency] private IEntityManager _entityManager = default!;
 
-    private readonly Dictionary<Vector3, List<NetEntity>> _turfClientImages = new();
-    private readonly Dictionary<EntityUid, List<NetEntity>> _amClientImages = new();
+    private readonly Dictionary<Vector3, List<NetEntity>> _turfClientImages = [];
+    // By NetEntity, since the movable may not have been sent to us yet
+    private readonly Dictionary<NetEntity, List<NetEntity>> _amClientImages = [];
 
     public override void Initialize() {
         SubscribeNetworkEvent<AddClientImageEvent>(OnAddClientImage);
@@ -24,7 +25,7 @@ internal sealed partial class ClientImagesSystem : SharedClientImagesSystem {
             if (!_turfClientImages.TryGetValue(tileCoords.Value, out result))
                 return false;
         } else {
-            if (!_amClientImages.TryGetValue(entity, out result))
+            if (!_amClientImages.TryGetValue(_entityManager.GetNetEntity(entity), out result))
                 return false;
         }
 
@@ -32,34 +33,32 @@ internal sealed partial class ClientImagesSystem : SharedClientImagesSystem {
     }
 
     private void OnAddClientImage(AddClientImageEvent e) {
-        EntityUid ent = _entityManager.GetEntity(e.AttachedEntity);
-        if (ent == EntityUid.Invalid) {
+        if (!e.AttachedEntity.IsValid()) {
             if (!_turfClientImages.TryGetValue(e.TurfCoords, out var iconList))
                 iconList = new List<NetEntity>();
             iconList.Add(e.ImageEntity);
             _turfClientImages[e.TurfCoords] = iconList;
         } else {
-            if (!_amClientImages.TryGetValue(ent, out var iconList))
+            if (!_amClientImages.TryGetValue(e.AttachedEntity, out var iconList))
                 iconList = new List<NetEntity>();
             iconList.Add(e.ImageEntity);
-            _amClientImages[ent] = iconList;
+            _amClientImages[e.AttachedEntity] = iconList;
         }
     }
 
     private void OnRemoveClientImage(RemoveClientImageEvent e) {
-        EntityUid ent = _entityManager.GetEntity(e.AttachedEntity);
-        if (ent == EntityUid.Invalid) {
+        if (!e.AttachedEntity.IsValid()) {
             if (!_turfClientImages.TryGetValue(e.TurfCoords, out var iconList))
                 return;
             iconList.Remove(e.ImageEntity);
             if (iconList.Count == 0)
                 _turfClientImages.Remove(e.TurfCoords);
         } else {
-            if (!_amClientImages.TryGetValue(ent, out var iconList))
+            if (!_amClientImages.TryGetValue(e.AttachedEntity, out var iconList))
                 return;
             iconList.Remove(e.ImageEntity);
             if (iconList.Count == 0)
-                _amClientImages.Remove(ent);
+                _amClientImages.Remove(e.AttachedEntity);
         }
     }
 }

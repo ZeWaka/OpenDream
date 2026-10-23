@@ -1,3 +1,4 @@
+using OpenDreamRuntime.Objects;
 using OpenDreamRuntime.Objects.Types;
 using Robust.Server.GameStates;
 using Robust.Shared;
@@ -10,7 +11,7 @@ using Robust.Shared.Player;
 namespace OpenDreamRuntime.Rendering;
 
 /// <summary>
-/// Sends vis_contents only to the clients that can see their holder via ExpandPvsEvent
+/// Sends vis_contents and client.images only to the clients that can see their holder/loc via ExpandPvsEvent
 /// TODO: Copies some stuff from PVS, we should expose visible chunks through like ExpandPvsEvent and/or a public GetVisibleChunks
 ///       Would let us remove AddViewer and UpdateViewSize here
 /// </summary>
@@ -35,6 +36,7 @@ public sealed partial class ServerVisContentsSystem : EntitySystem {
     private sealed class SessionData {
         public readonly List<EntityUid> Entities = [];
         public readonly HashSet<DreamObjectAtom> Visited = [];
+        public readonly HashSet<(MapId, Vector2i)> Chunks = [];
     }
 
     public override void Initialize() {
@@ -90,6 +92,7 @@ public sealed partial class ServerVisContentsSystem : EntitySystem {
         var data = _sessionData.GetOrCreateValue(session);
         data.Entities.Clear();
         data.Visited.Clear();
+        data.Chunks.Clear();
 
         if (session.AttachedEntity is { } attached)
             AddViewer(attached, data);
@@ -98,16 +101,22 @@ public sealed partial class ServerVisContentsSystem : EntitySystem {
                 AddViewer(viewer, data);
         }
 
-        // client.screen and client.images are visible wherever they are
         if (_dreamManager.GetConnectionBySession(session).Client is { } client) {
             // TODO: foreach EnumerateValues() boxes the enumerator every tick, for every client
+            // client.screen is visible wherever it is
             foreach (var screenObject in client.Screen.EnumerateValues()) {
                 if (screenObject.TryGetValueAsDreamObject<DreamObjectAtom>(out var atom) && atom.VisContentsList is { } visContents)
                     AddVisContents(visContents, data);
             }
 
+            // client.images are only visible where their loc is
             foreach (var image in client.Images.EnumerateValues()) {
-                if (image.TryGetValueAsDreamObject<DreamObjectImage>(out var imageObject) && imageObject.VisContentsList is { } visContents)
+                if (!image.TryGetValueAsDreamObject<DreamObjectImage>(out var imageObject) || imageObject.Deleted || !IsVisible(imageObject.GetAttachedLoc(), data))
+                    continue;
+
+                if (imageObject.Entity.IsValid())
+                    data.Entities.Add(imageObject.Entity);
+                if (imageObject.VisContentsList is { } visContents)
                     AddVisContents(visContents, data);
             }
         }
@@ -137,12 +146,30 @@ public sealed partial class ServerVisContentsSystem : EntitySystem {
 
         var chunks = new ChunkIndicesEnumerator(pos, Math.Max(size, 1) / 2f, ChunkSize);
         while (chunks.MoveNext(out var chunk)) {
-            if (!_holders.TryGetValue((xform.MapID, chunk.Value), out var holders))
+            var key = (xform.MapID, chunk.Value);
+            if (!data.Chunks.Add(key) || !_holders.TryGetValue(key, out var holders))
                 continue;
 
             foreach (var holder in holders)
                 AddVisContents(holder, data);
         }
+    }
+
+    /// <summary>
+    /// Whether something at this loc is in a chunk the session can see
+    /// Locs off the map (e.g. hud screen objects) count as visible
+    /// </summary>
+    private bool IsVisible(DreamObject? loc, SessionData data) {
+        if (loc is not DreamObjectAtom atom)
+            return true; // No loc
+        if (atom is DreamObjectArea)
+            return true; // Areas are everywhere
+
+        var chunk = GetChunk(atom);
+        if (!chunk.HasValue)
+            return true; // Nullspace
+
+        return data.Chunks.Contains(chunk.Value);
     }
 
     private static void AddVisContents(DreamVisContentsList list, SessionData data) {
