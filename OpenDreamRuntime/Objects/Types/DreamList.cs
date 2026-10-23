@@ -7,7 +7,6 @@ using OpenDreamRuntime.Map;
 using OpenDreamRuntime.Procs;
 using OpenDreamRuntime.Rendering;
 using OpenDreamShared.Dream;
-using Robust.Server.GameStates;
 using Dependency = Robust.Shared.IoC.DependencyAttribute;
 namespace OpenDreamRuntime.Objects.Types;
 
@@ -1007,17 +1006,17 @@ public sealed class DreamOverlaysList(DreamObjectDefinition listDef, DreamObject
 // atom or image vis_contents list
 // Operates on an object's appearance
 public sealed class DreamVisContentsList : DreamList {
-    private readonly PvsOverrideSystem? _pvsOverrideSystem;
+    private readonly ServerVisContentsSystem? _visContentsSystem;
 
     private readonly List<DreamObjectAtom> _visContents = [];
 
     public readonly DreamObject Owner; // atom or image
     public IReadOnlyList<DreamObjectAtom> VisContents => _visContents;
 
-    public DreamVisContentsList(DreamObjectDefinition listDef, PvsOverrideSystem? pvsOverrideSystem, DreamObject atom) : base(listDef, 0) {
+    public DreamVisContentsList(DreamObjectDefinition listDef, ServerVisContentsSystem? visContentsSystem, DreamObject atom) : base(listDef, 0) {
         IoCManager.InjectDependencies(this);
 
-        _pvsOverrideSystem = pvsOverrideSystem;
+        _visContentsSystem = visContentsSystem;
         Owner = atom;
     }
 
@@ -1072,10 +1071,6 @@ public sealed class DreamVisContentsList : DreamList {
         } else {
             throw new DMException($"Cannot add {value} to a vis_contents list");
         }
-
-        // TODO: Only override the entity's visibility if its parent atom is visible
-        if (entity != EntityUid.Invalid)
-            _pvsOverrideSystem?.AddGlobalOverride(entity);
 
         AtomManager.UpdateAppearance(Owner, appearance => {
             // Add even an invalid UID to keep this and _visContents in sync

@@ -41,7 +41,7 @@ public sealed class DreamObjectImage : DreamObject {
         } else {
             _overlays = new DreamOverlaysList(ObjectTree.List.ObjectDefinition, this, AppearanceSystem, false);
             _underlays = new DreamOverlaysList(ObjectTree.List.ObjectDefinition, this, AppearanceSystem, true);
-            _visContents = new DreamVisContentsList(ObjectTree.List.ObjectDefinition, PvsOverrideSystem, this);
+            _visContents = new DreamVisContentsList(ObjectTree.List.ObjectDefinition, VisContentsSystem, this);
             _filters = new DreamFilterList(ObjectTree.List.ObjectDefinition, this);
             IsMutableAppearance = false;
             Entity = EntityManager.SpawnEntity(null, new MapCoordinates(0, 0, MapId.Nullspace)); //spawning an entity in nullspace means it never actually gets sent to any clients until it's placed on the map, or it gets a PVS override

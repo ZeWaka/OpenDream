@@ -11,8 +11,6 @@ using OpenDreamRuntime.Procs.DebugAdapter;
 using OpenDreamRuntime.Rendering;
 using OpenDreamRuntime.Resources;
 using Robust.Server.GameObjects;
-using Robust.Server.GameStates;
-using Robust.Shared.Map;
 using Robust.Shared.Serialization.Manager;
 using Robust.Shared.Serialization.Manager.Exceptions;
 using Robust.Shared.Utility;
@@ -72,7 +70,7 @@ public sealed partial class DreamObjectTree {
     [Dependency] private ProcScheduler _procScheduler = default!;
     private ServerAppearanceSystem? _appearanceSystem;
     private TransformSystem? _transformSystem;
-    private PvsOverrideSystem? _pvsOverrideSystem;
+    private ServerVisContentsSystem? _visContentsSystem;
     private MetaDataSystem? _metaDataSystem;
     private ServerVerbSystem? _verbSystem;
     private ServerDreamParticlesSystem? _particlesSystem;
@@ -86,7 +84,7 @@ public sealed partial class DreamObjectTree {
 
         _entitySystemManager.TryGetEntitySystem(out _appearanceSystem);
         _entitySystemManager.TryGetEntitySystem(out _transformSystem);
-        _entitySystemManager.TryGetEntitySystem(out _pvsOverrideSystem);
+        _entitySystemManager.TryGetEntitySystem(out _visContentsSystem);
         _entitySystemManager.TryGetEntitySystem(out _metaDataSystem);
         _entitySystemManager.TryGetEntitySystem(out _verbSystem);
         _entitySystemManager.TryGetEntitySystem(out _particlesSystem);
@@ -381,7 +379,7 @@ public sealed partial class DreamObjectTree {
         foreach (TreeEntry type in GetAllDescendants(Root)) {
             int typeId = type.Id;
             DreamTypeJson jsonType = types[typeId];
-            var definition = new DreamObjectDefinition(_dreamManager, _refManager, this, _atomManager, _dreamMapManager, mapSystem, _dreamResourceManager, _walkManager, _entityManager, _serializationManager, _appearanceSystem, _transformSystem, _pvsOverrideSystem, _metaDataSystem, _verbSystem, _particlesSystem, type);
+            var definition = new DreamObjectDefinition(_dreamManager, _refManager, this, _atomManager, _dreamMapManager, mapSystem, _dreamResourceManager, _walkManager, _entityManager, _serializationManager, _appearanceSystem, _transformSystem, _visContentsSystem, _metaDataSystem, _verbSystem, _particlesSystem, type);
 
             type.ObjectDefinition = definition;
             type.TreeIndex = treeIndex++;

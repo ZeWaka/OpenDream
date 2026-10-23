@@ -5,9 +5,6 @@ using OpenDreamRuntime.Procs;
 using OpenDreamRuntime.Rendering;
 using OpenDreamRuntime.Resources;
 using Robust.Server.GameObjects;
-using Robust.Server.GameStates;
-using Robust.Server.Player;
-using Robust.Shared.Map;
 using Robust.Shared.Serialization.Manager;
 
 namespace OpenDreamRuntime.Objects;
@@ -27,7 +24,7 @@ public sealed class DreamObjectDefinition {
     public readonly ISerializationManager SerializationManager;
     public readonly ServerAppearanceSystem? AppearanceSystem;
     public readonly TransformSystem? TransformSystem;
-    public readonly PvsOverrideSystem? PvsOverrideSystem;
+    public readonly ServerVisContentsSystem? VisContentsSystem;
     public readonly MetaDataSystem? MetaDataSystem;
     public readonly ServerVerbSystem? VerbSystem;
     public readonly ServerDreamParticlesSystem? ParticlesSystem;
@@ -72,7 +69,7 @@ public sealed class DreamObjectDefinition {
         SerializationManager = copyFrom.SerializationManager;
         AppearanceSystem = copyFrom.AppearanceSystem;
         TransformSystem = copyFrom.TransformSystem;
-        PvsOverrideSystem = copyFrom.PvsOverrideSystem;
+        VisContentsSystem = copyFrom.VisContentsSystem;
         MetaDataSystem = copyFrom.MetaDataSystem;
         VerbSystem = copyFrom.VerbSystem;
         ParticlesSystem = copyFrom.ParticlesSystem;
@@ -90,7 +87,7 @@ public sealed class DreamObjectDefinition {
             Verbs = new Dictionary<string, int>(copyFrom.Verbs);
     }
 
-    public DreamObjectDefinition(DreamManager dreamManager, DreamRefManager dreamRefManager, DreamObjectTree objectTree, AtomManager atomManager, IDreamMapManager dreamMapManager, SharedMapSystem mapManager, DreamResourceManager dreamResourceManager, WalkManager walkManager, IEntityManager entityManager, ISerializationManager serializationManager, ServerAppearanceSystem? appearanceSystem, TransformSystem? transformSystem, PvsOverrideSystem? pvsOverrideSystem, MetaDataSystem? metaDataSystem, ServerVerbSystem? verbSystem, ServerDreamParticlesSystem? particlesSystem, TreeEntry? treeEntry) {
+    public DreamObjectDefinition(DreamManager dreamManager, DreamRefManager dreamRefManager, DreamObjectTree objectTree, AtomManager atomManager, IDreamMapManager dreamMapManager, SharedMapSystem mapManager, DreamResourceManager dreamResourceManager, WalkManager walkManager, IEntityManager entityManager, ISerializationManager serializationManager, ServerAppearanceSystem? appearanceSystem, TransformSystem? transformSystem, ServerVisContentsSystem? visContentsSystem, MetaDataSystem? metaDataSystem, ServerVerbSystem? verbSystem, ServerDreamParticlesSystem? particlesSystem, TreeEntry? treeEntry) {
         DreamManager = dreamManager;
         DreamRefManager = dreamRefManager;
         ObjectTree = objectTree;
@@ -103,7 +100,7 @@ public sealed class DreamObjectDefinition {
         SerializationManager = serializationManager;
         AppearanceSystem = appearanceSystem;
         TransformSystem = transformSystem;
-        PvsOverrideSystem = pvsOverrideSystem;
+        VisContentsSystem = visContentsSystem;
         MetaDataSystem = metaDataSystem;
         VerbSystem = verbSystem;
         ParticlesSystem = particlesSystem;

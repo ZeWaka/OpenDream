@@ -4,7 +4,7 @@
 public class DreamObjectAtom(DreamObjectDefinition objectDefinition) : DreamObject(objectDefinition) {
     private DreamOverlaysList Overlays => _overlays ??= new(ObjectTree.List.ObjectDefinition, this, AppearanceSystem, false);
     private DreamOverlaysList Underlays => _underlays ??= new(ObjectTree.List.ObjectDefinition, this, AppearanceSystem, true);
-    private DreamVisContentsList VisContents => _visContents ??= new(ObjectTree.List.ObjectDefinition, PvsOverrideSystem, this);
+    private DreamVisContentsList VisContents => _visContents ??= new(ObjectTree.List.ObjectDefinition, VisContentsSystem, this);
     private DreamFilterList Filters => _filters ??= new(ObjectTree.List.ObjectDefinition, this);
     private DreamList VisLocs => _visLocs ??= ObjectTree.CreateList();
 

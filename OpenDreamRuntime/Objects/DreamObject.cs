@@ -10,7 +10,6 @@ using OpenDreamRuntime.Rendering;
 using OpenDreamRuntime.Resources;
 using OpenDreamShared.Dream;
 using Robust.Server.GameObjects;
-using Robust.Server.GameStates;
 using Robust.Shared.Map;
 using Robust.Shared.Serialization.Manager;
 using Robust.Shared.Utility;
@@ -51,7 +50,7 @@ public class DreamObject {
     protected ISerializationManager SerializationManager => ObjectDefinition.SerializationManager;
     protected ServerAppearanceSystem? AppearanceSystem => ObjectDefinition.AppearanceSystem;
     protected TransformSystem? TransformSystem => ObjectDefinition.TransformSystem;
-    protected PvsOverrideSystem? PvsOverrideSystem => ObjectDefinition.PvsOverrideSystem;
+    protected ServerVisContentsSystem? VisContentsSystem => ObjectDefinition.VisContentsSystem;
     protected MetaDataSystem? MetaDataSystem => ObjectDefinition.MetaDataSystem;
     protected ServerVerbSystem? VerbSystem => ObjectDefinition.VerbSystem;
     protected ServerDreamParticlesSystem? ParticlesSystem => ObjectDefinition.ParticlesSystem;
