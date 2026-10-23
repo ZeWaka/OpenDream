@@ -178,9 +178,14 @@ public sealed class DreamObjectClient : DreamObject {
                 break;
             }
             case "images": {
+                // TODO: Every Cut list setter (overlays, screen, verbs, contents, etc) breaks on `x = x`
+                // Move this guard into a shared DreamList helper
+                if (value.TryGetValueAsDreamList(out var valueList) && valueList == Images)
+                    break;
+
                 Images.Cut();
 
-                if (value.TryGetValueAsDreamList(out var valueList)) {
+                if (valueList != null) {
                     foreach (DreamValue screenValue in valueList.EnumerateValues()) {
                         Images.AddValue(screenValue);
                     }

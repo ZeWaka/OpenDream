@@ -1361,6 +1361,11 @@ public sealed class ClientImagesList(DreamObjectTree objectTree, ServerClientIma
         return value;
     }
 
+    protected override void HandleDeletion() {
+        Cut();
+        base.HandleDeletion();
+    }
+
     public override List<DreamValue> GetValues() {
         return _imageObjects;
     }
@@ -1378,7 +1383,8 @@ public sealed class ClientImagesList(DreamObjectTree objectTree, ServerClientIma
             return;
 
         clientImagesSystem?.AddImageObject(connection, image);
-        _imageObjects.Add(value); // TODO: IncRef/DecRef like ClientScreenList
+        _imageObjects.Add(value);
+        value.IncRef();
     }
 
     public override void RemoveValue(DreamValue value) {
@@ -1386,17 +1392,18 @@ public sealed class ClientImagesList(DreamObjectTree objectTree, ServerClientIma
             return;
 
         clientImagesSystem?.RemoveImageObject(connection, image);
-        _imageObjects.Remove(value);
+        if (_imageObjects.Remove(value))
+            value.DecRef();
     }
 
     public override void Cut(int start = 1, int end = 0) {
         if (end == 0 || end > _imageObjects.Count + 1) end = _imageObjects.Count + 1;
 
         for (int i = start - 1; i < end - 1; i++) {
-            if (!_imageObjects[i].TryGetValueAsDreamObject<DreamObjectImage>(out var image))
-                continue;
-
-            clientImagesSystem?.RemoveImageObject(connection, image);
+            var value = _imageObjects[i];
+            if (value.TryGetValueAsDreamObject<DreamObjectImage>(out var image))
+                clientImagesSystem?.RemoveImageObject(connection, image);
+            value.DecRef();
         }
 
         _imageObjects.RemoveRange(start - 1, end - start);
