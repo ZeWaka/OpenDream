@@ -159,6 +159,16 @@ public struct DreamValue : IDisposable, IEquatable<DreamValue> {
         Unsafe.As<DreamObject>(_refValue).DecRef();
     }
 
+    /// <summary>
+    /// Takes a new reference to this value and returns it, for handing out a value you don't own (e.g. returning an argument).
+    /// The caller must release it.
+    /// </summary>
+    [JetBrains.Annotations.MustDisposeResource]
+    public DreamValue NewRef() {
+        IncRef();
+        return this;
+    }
+
     [Obsolete("Deprecated. Use TryGetValueAsString() or MustGetValueAsString() instead.")]
     public string GetValueAsString() {
         return MustGetValueAsString();

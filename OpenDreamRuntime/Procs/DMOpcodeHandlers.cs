@@ -705,8 +705,12 @@ namespace OpenDreamRuntime.Procs {
 
                         break;
                     case DreamObjectSavefile savefile:
-                        list = new SavefileDirList(state.Proc.ObjectTree.List.ObjectDefinition, savefile);
-                        break;
+                        // A temporary list just for this check
+                        var dirList = new SavefileDirList(state.Proc.ObjectTree.List.ObjectDefinition, savefile);
+
+                        state.Push(new DreamValue(dirList.ContainsKey(value) ? 1 : 0));
+                        dirList.DecRef();
+                        return ProcStatus.Continue;
                     case IDreamList dreamList:
                         list = dreamList;
                         break;
@@ -806,7 +810,10 @@ namespace OpenDreamRuntime.Procs {
             if (first.IsNull) {
                 output = second;
             } else if (first.TryGetValueAsDreamResource(out _) || first.TryGetValueAsDreamObject<DreamObjectIcon>(out _)) {
-                output = IconOperation(state, BlendType.Add, first, second);
+                using var iconResult = IconOperation(state, BlendType.Add, first, second);
+
+                state.Push(iconResult);
+                return ProcStatus.Continue;
             } else if (first.TryGetValueAsType(out _) || first.TryGetValueAsProc(out _)) {
                 output = default; // Always errors
             } else if (second.IsNull) {
@@ -929,7 +936,9 @@ namespace OpenDreamRuntime.Procs {
             } else if(first.IsNull) { // null just ignores the right hand
                 state.Push(new(0));
             } else if (first.TryGetValueAsDreamObject<DreamObject>(out var dreamObject)) {
-                state.Push(dreamObject.OperatorAnd(second, state));
+                using var result = dreamObject.OperatorAnd(second, state);
+
+                state.Push(result);
             } else {
                 throw new DMException($"invalid operation {first} & {second}");
             }
@@ -943,7 +952,9 @@ namespace OpenDreamRuntime.Procs {
             if (input.TryGetValueAsInteger(out var value)) {
                 state.Push(new DreamValue((~value) & 0xFFFFFF));
             } else if (input.TryGetValueAsDreamObject(out var obj) && obj != null) {
-                state.Push(obj.OperatorNot(state));
+                using var result = obj.OperatorNot(state);
+
+                state.Push(result);
             } else {
                 state.Push(new DreamValue(16777215)); // 2^24 - 1
             }
@@ -2028,18 +2039,20 @@ namespace OpenDreamRuntime.Procs {
 
                     if (argumentKey.TryGetValueAsString(out var argumentKeyStr)) {
                         if (argumentKeyStr == "index") {
-                            gradientIndex = argumentValue;
+                            gradientIndex.Dispose();
+                            gradientIndex = argumentValue.NewRef();
                             continue;
                         }
 
                         if (argumentKeyStr == "space") {
-                            gradientColorSpace = argumentValue;
+                            gradientColorSpace.Dispose();
+                            gradientColorSpace = argumentValue.NewRef();
                             continue;
                         }
                     }
 
                     if (i == argumentCount - 1 && gradientIndex == default) {
-                        gradientIndex = argumentValue;
+                        gradientIndex = argumentValue.NewRef();
                         continue;
                     }
 
@@ -2058,18 +2071,20 @@ namespace OpenDreamRuntime.Procs {
 
                     if (value.TryGetValueAsString(out var argumentKey)) {
                         if (argumentKey == "index") {
+                            gradientIndex.Dispose();
                             gradientIndex = argList.GetElement(value);
                             continue;
                         }
 
                         if (argumentKey == "space") {
+                            gradientColorSpace.Dispose();
                             gradientColorSpace = argList.GetElement(value);
                             continue;
                         }
                     }
 
                     if (i == argListValues.Count - 1 && gradientIndex == default) {
-                        gradientIndex = value;
+                        gradientIndex = value.NewRef();
                         continue;
                     }
 
@@ -2078,7 +2093,7 @@ namespace OpenDreamRuntime.Procs {
             } else {
                 using var arguments = state.PopProcArguments(null, argumentInfo);
 
-                gradientIndex = arguments.Values[^1];
+                gradientIndex = arguments.Values[^1].NewRef();
                 for (int i = 0; i < arguments.Count - 1; i++) {
                     gradientValues.Add(arguments.Values[i]);
                 }
@@ -2225,8 +2240,9 @@ namespace OpenDreamRuntime.Procs {
                                     var objTransformClone = DreamObjectMatrix.MakeMatrix(state.Proc.ObjectTree, appearance.Transform);
 
                                     DreamObjectMatrix.MultiplyMatrix(objTransformClone, multTransform);
-                                    animateValue = new(objTransformClone);
-                                    break;
+                                    SetAnimatedVar(arg.Key, new(objTransformClone));
+                                    objTransformClone.DecRef();
+                                    continue;
                                 case "color": {
                                     ColorMatrix cMatrix;
                                     if (animateValue.TryGetValueAsString(out var colorStr) && Color.TryParse(colorStr, out var colorObj)) {
@@ -2244,8 +2260,10 @@ namespace OpenDreamRuntime.Procs {
                                     }
 
                                     ColorMatrix.Multiply(ref objCMatrix, ref cMatrix, out var resultMatrix);
-                                    animateValue = new DreamValue(new DreamList(state.Proc.ObjectTree.List.ObjectDefinition, resultMatrix.GetValues().Select(x => new DreamValue(x)).ToList(), null));
-                                    break;
+                                    var colorResult = new DreamList(state.Proc.ObjectTree.List.ObjectDefinition, resultMatrix.GetValues().Select(x => new DreamValue(x)).ToList(), null);
+                                    SetAnimatedVar(arg.Key, new(colorResult));
+                                    colorResult.DecRef();
+                                    continue;
                                 }
                                 case "pixel_x":
                                 case "pixel_y":
@@ -2267,8 +2285,12 @@ namespace OpenDreamRuntime.Procs {
                             }
                         }
 
-                        obj.SetVariableValue(arg.Key, animateValue);
-                        atomManager.SetAppearanceVar(appearance, arg.Key, animateValue);
+                        SetAnimatedVar(arg.Key, animateValue);
+                    }
+
+                    void SetAnimatedVar(string key, DreamValue value) {
+                        obj.SetVariableValue(key, value);
+                        atomManager.SetAppearanceVar(appearance, key, value);
                     }
                 });
 
@@ -2539,7 +2561,9 @@ namespace OpenDreamRuntime.Procs {
                 if (indexing.TryGetValueAsDreamObject<DreamObjectSavefile>(out _)) {
                     // Savefiles get some special treatment.
                     // "savefile[A] >> B" is the same as "B = savefile[A]"
-                    state.AssignReference(rightRef, state.GetReferenceValue(leftRef));
+                    using var value = state.GetReferenceValue(leftRef);
+
+                    state.AssignReference(rightRef, value);
                     return ProcStatus.Continue;
                 } else {
                     // Pop the reference's stack values

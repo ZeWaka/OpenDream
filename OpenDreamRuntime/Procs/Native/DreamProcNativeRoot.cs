@@ -182,14 +182,20 @@ internal static class DreamProcNativeRoot {
             targetWidth = new(bundle.DreamManager.WorldInstance.IconSize);
         }
 
-        if (!origin.TryGetVariable("bound_height", out var targetHeight)) {
+        if (!target.TryGetVariable("bound_height", out var targetHeight)) {
             targetHeight = new(bundle.DreamManager.WorldInstance.IconSize);
         }
 
-        return new DreamValue(MathF.Max(MathF.Abs(position2.X - position1.X) * bundle.DreamManager.WorldInstance.IconSize -
+        var result = new DreamValue(MathF.Max(MathF.Abs(position2.X - position1.X) * bundle.DreamManager.WorldInstance.IconSize -
                                     MathF.Abs(originWidth.MustGetValueAsFloat() + targetWidth.MustGetValueAsFloat()) / 2,
                                     MathF.Abs(position2.Y - position1.Y) * bundle.DreamManager.WorldInstance.IconSize -
                                     MathF.Abs(originHeight.MustGetValueAsFloat() + targetHeight.MustGetValueAsFloat()) / 2));
+
+        originWidth.Dispose();
+        originHeight.Dispose();
+        targetWidth.Dispose();
+        targetHeight.Dispose();
+        return result;
     }
 
     [DreamProc("ceil")]
@@ -1184,6 +1190,7 @@ internal static class DreamProcNativeRoot {
                         case "__number__": {
                             var raw = first.Value.GetString();
                             var val = raw != null ? float.Parse(raw) : float.NaN;
+                            list.DecRef();
                             return new DreamValue(val);
                         }
                     }
@@ -1408,7 +1415,7 @@ internal static class DreamProcNativeRoot {
     public static DreamValue NativeProc_lowertext(NativeProc.Bundle bundle, DreamObject? src, DreamObject? usr) {
         var arg = bundle.GetArgument(0, "T");
         if (!arg.TryGetValueAsString(out var text)) {
-            return arg;
+            return arg.NewRef();
         }
 
         return new DreamValue(text.ToLower());
@@ -1492,7 +1499,8 @@ internal static class DreamProcNativeRoot {
                 if (DreamObjectMatrix.TryInvert(invertableMatrix))
                     return new DreamValue(invertableMatrix);
 
-                invertableMatrix.DecRef();
+                if (!doModify)
+                    invertableMatrix.DecRef();
                 throw new ArgumentException("/matrix provided for MATRIX_INVERT cannot be inverted");
             case MatrixOpcode.Rotate:
                 var angleArgument = firstArgument;
@@ -1516,6 +1524,7 @@ internal static class DreamProcNativeRoot {
                     matrixToRotate = DreamObjectMatrix.MatrixClone(bundle.ObjectTree, matrixToRotate);
 
                 DreamObjectMatrix.MultiplyMatrix(matrixToRotate, rotationMatrix);
+                rotationMatrix.DecRef();
                 return new DreamValue(matrixToRotate);
             case MatrixOpcode.Scale:
                 //Four possible signatures: two to create a scale-matrix, and one to scale an existing matrix
@@ -1634,7 +1643,7 @@ internal static class DreamProcNativeRoot {
         if (bundle.Arguments.Length == 1) {
             DreamValue arg = bundle.GetArgument(0, "A");
             if (!arg.TryGetValueAsDreamList(out var list))
-                return arg;
+                return arg.NewRef();
 
             var values = list.GetKeys();
             if (values.Count == 0)
@@ -1654,7 +1663,7 @@ internal static class DreamProcNativeRoot {
             }
         }
 
-        return max;
+        return max.NewRef();
     }
 
     [DreamProc("md5")]
@@ -1715,7 +1724,7 @@ internal static class DreamProcNativeRoot {
         if (bundle.Arguments.Length == 1) {
             DreamValue arg = bundle.GetArgument(0, "A");
             if (!arg.TryGetValueAsDreamList(out var list))
-                return arg;
+                return arg.NewRef();
 
             var values = list.GetKeys();
             if (values.Count == 0)
@@ -1735,7 +1744,7 @@ internal static class DreamProcNativeRoot {
             }
         }
 
-        return min;
+        return min.NewRef();
     }
 
     [DreamProc("nonspantext")]
@@ -1911,10 +1920,13 @@ internal static class DreamProcNativeRoot {
                     }
                 }
             } else {
-                if (queryValues.Length > 1)
-                    list.Set(new DreamValue(queryKey), new DreamValue(objectTree.CreateList(queryValues)));
-                else
+                if (queryValues.Length > 1) {
+                    var valueList = objectTree.CreateList(queryValues);
+                    list.Set(new DreamValue(queryKey), new DreamValue(valueList));
+                    valueList.DecRef();
+                } else {
                     list.Set(new DreamValue(queryKey), new DreamValue(queryValues[0]));
+                }
             }
         }
 
@@ -2943,7 +2955,7 @@ internal static class DreamProcNativeRoot {
     public static DreamValue NativeProc_uppertext(NativeProc.Bundle bundle, DreamObject? src, DreamObject? usr) {
         var arg = bundle.GetArgument(0, "T");
         if (!arg.TryGetValueAsString(out var text)) {
-            return arg;
+            return arg.NewRef();
         }
 
         return new DreamValue(text.ToUpper());

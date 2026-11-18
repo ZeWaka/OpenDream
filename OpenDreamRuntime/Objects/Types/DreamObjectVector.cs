@@ -313,8 +313,9 @@ public sealed class DreamObjectVector(DreamObjectDefinition definition) : DreamO
                 using var y = list.GetElement(new(2));
                 using var z = list.GetElement(new(3));
 
+                using var args = new DreamProcArguments(x, y, z);
                 vector = tree.CreateObject<DreamObjectVector>(tree.Vector);
-                vector.Initialize(new(x, y, z));
+                vector.Initialize(args);
                 return true;
             }
 
@@ -322,8 +323,9 @@ public sealed class DreamObjectVector(DreamObjectDefinition definition) : DreamO
                 using var x = list.GetElement(new(1));
                 using var y = list.GetElement(new(2));
 
+                using var args = new DreamProcArguments(x, y);
                 vector = tree.CreateObject<DreamObjectVector>(tree.Vector);
-                vector.Initialize(new(x, y));
+                vector.Initialize(args);
                 return true;
             }
         }

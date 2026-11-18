@@ -197,6 +197,10 @@ public static partial class ByondApi {
         ThreadSyncQueue.Enqueue(task);
     }
 
+    /// <summary>
+    /// Keeps a value handed to native code alive until the next <see cref="Update"/>, like BYOND's temporary references.
+    /// Takes over the reference passed in, so use <see cref="DreamValue.NewRef"/> on values you don't own.
+    /// </summary>
     private static void AddTemporaryReference([HandlesResourceDisposal] DreamValue value) {
         TemporaryReferences.Enqueue(value);
     }

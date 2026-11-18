@@ -426,6 +426,14 @@ public sealed class DreamObjectSavefile : DreamObject {
         return DreamValue.Null;
     }
 
+    private static bool IsEquivalent(DreamValue value, DreamValue other) {
+        if (!value.TryGetValueAsDreamObject(out var obj) || obj == null)
+            return false;
+
+        using var result = obj.OperatorEquivalent(other);
+        return result.IsTruthy();
+    }
+
     /// <summary>
     /// Serialize DM values/objects into savefile data
     /// </summary>
@@ -512,9 +520,10 @@ public sealed class DreamObjectSavefile : DreamObject {
                     }
 
                     SfDreamObjectPathValue jsonEncodedObject = new SfDreamObjectPathValue { Path = $".{objectCount}" };
+                    //special handling for type, because it's const but we need to save it anyway
+                    using var typeValue = dreamObject.GetVariable("type");
                     SfDreamDir objectVars = new SfDreamDir {
-                        //special handling for type, because it's const but we need to save it anyway
-                        ["type"] = SerializeDreamValue(dreamObject.GetVariable("type"))
+                        ["type"] = SerializeDreamValue(typeValue)
                     };
 
                     foreach (var key in dreamObject.ObjectDefinition.Variables.Keys) {
@@ -522,7 +531,7 @@ public sealed class DreamObjectSavefile : DreamObject {
                             continue; //skip const & tmp variables (they're not saved)
 
                         using var objectVarVal = dreamObject.GetVariable(key);
-                        if (dreamObject.ObjectDefinition.Variables[key] == objectVarVal || (objectVarVal.TryGetValueAsDreamObject(out DreamObject? equivTestObject) && equivTestObject != null && equivTestObject.OperatorEquivalent(dreamObject.ObjectDefinition.Variables[key]).IsTruthy()))
+                        if (dreamObject.ObjectDefinition.Variables[key] == objectVarVal || IsEquivalent(objectVarVal, dreamObject.ObjectDefinition.Variables[key]))
                             continue; //skip default values - equivalence check used for lists and objects
 
                         objectVars[key] = SerializeDreamValue(objectVarVal);

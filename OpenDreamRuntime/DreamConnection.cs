@@ -248,6 +248,7 @@ public sealed partial class DreamConnection {
         }
 
         promptEvent.Invoke(new DreamValue(allSounds));
+        allSounds.DecRef();
         _promptEvents.Remove(message.PromptId);
     }
 
